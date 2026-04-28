@@ -21,6 +21,18 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
+    // 브라우저(Windows) 와 백엔드(Linux/WSL) 의 호스트가 달라도 같은 origin 으로 호출되도록
+    // /api 와 /actuator 를 vite dev 서버가 mock 백엔드로 프록시한다.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: false,
+      },
+      '/actuator': {
+        target: 'http://localhost:8080',
+        changeOrigin: false,
+      },
+    },
   },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.

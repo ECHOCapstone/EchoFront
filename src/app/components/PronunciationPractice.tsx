@@ -1,134 +1,187 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Volume2, Home, Mic, User, ArrowRight, Check, X } from 'lucide-react';
+// 추천 학습 unit 진입 페이지. URL ?scriptId=N 으로 받은 학습 unit 의 단계를
+// 백엔드에서 받아 채팅 흐름을 그리고, 단계별로 녹음 → 업로드 → 점수 표시 → 다음 단계로 진행.
+// 마지막 단계 완료 시 종합 피드백을 생성해 FeedbackFlow 로 자연스럽게 이어진다.
+
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
+import { ArrowLeft, Home, Mic, User, Volume2 } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
+import { BotBubble, UserBubble } from './ChatBubble';
+import FeedbackFlow from './FeedbackFlow';
+import {
+  ApiException,
+  feedbackApi,
+  recordingsApi,
+  scriptsApi,
+  ttsApi,
+  type Feedback,
+  type LearningStep,
+  type ScriptDetail,
+} from '../api';
+import { useRecorder } from '../hooks/useRecorder';
 
-// 3개의 문제 데이터
-const problems = [
-  {
-    id: 1,
-    steps: [
-      'R과 L을 각각 발음해 볼 겁니다.',
-      '녹음 버튼을 누르고 R을 발음해 보세요.',
-      '녹음 버튼을 누르고 L을 발음해 보세요.',
-    ],
-  },
-  {
-    id: 2,
-    steps: [
-      'Right와 Light를 각각 발음해 볼 겁니다.',
-      '녹음 버튼을 누르고 Right를 발음해 보세요.',
-      '녹음 버튼을 누르고 Light를 발음해 보세요.',
-    ],
-  },
-  {
-    id: 3,
-    steps: [
-      'Store와 Stole을 각각 발음해 볼 겁니다.',
-      '녹음 버튼을 누르고 Store를 발음해 보세요.',
-      '녹음 버튼을 누르고 Stole을 발음해 보세요.',
-    ],
-  },
-];
+type ChatItem =
+  | { kind: 'bot-step'; step: LearningStep }
+  | { kind: 'user-record'; key: string; score: number | null };
+
+const NO_SCRIPT_FALLBACK_ID = 1;
 
 export default function PronunciationPractice() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const nickname = location.state?.nickname || '사용자';
+  const [searchParams] = useSearchParams();
+  const scriptId = useMemo(() => {
+    const raw = searchParams.get('scriptId');
+    const parsed = raw ? Number(raw) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : NO_SCRIPT_FALLBACK_ID;
+  }, [searchParams]);
 
-  const [currentProblem, setCurrentProblem] = useState(0);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [showRecordModal, setShowRecordModal] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [hasRecording, setHasRecording] = useState(false);
-  const [hasCompletedRecording, setHasCompletedRecording] = useState(false);
+  const recorder = useRecorder();
 
-  const handleNavigation = (path: string) => {
-    navigate(path, { state: { nickname } });
-  };
+  const [script, setScript] = useState<ScriptDetail | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [chat, setChat] = useState<ChatItem[]>([]);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [recordingIds, setRecordingIds] = useState<number[]>([]);
+  const [unitDone, setUnitDone] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [busyStep, setBusyStep] = useState(false);
 
-  const handlePlayAudio = () => {
-    const currentText = problems[currentProblem].steps[currentStep];
-    console.log('음성 재생:', currentText);
-    alert('음성 재생 기능은 실제 구현 시 TTS API를 사용합니다.');
-  };
+  useEffect(() => {
+    let cancelled = false;
+    scriptsApi
+      .detail(scriptId)
+      .then((data) => {
+        if (cancelled) return;
+        setScript(data);
+        // 첫 진입 시 INTRO 메시지들과 첫 RECORD 메시지까지 미리 노출.
+        const initial: ChatItem[] = [];
+        let cursor = 0;
+        while (cursor < data.steps.length) {
+          initial.push({ kind: 'bot-step', step: data.steps[cursor] });
+          if (data.steps[cursor].kind === 'RECORD') break;
+          cursor += 1;
+        }
+        setChat(initial);
+        setStepIndex(cursor);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setLoadError(err instanceof ApiException ? err.message : '학습 자료를 불러오지 못했습니다.');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scriptId]);
 
-  const handleOpenRecordModal = () => {
-    if (currentStep === 0) {
-      // 첫 번째 스텝은 안내 문구이므로 녹음 불가
-      alert('먼저 지시사항을 읽어주세요.');
-      return;
+  const currentStep = script && stepIndex < script.steps.length ? script.steps[stepIndex] : null;
+
+  const handlePlayAudio = async (text: string | null) => {
+    if (!text) return;
+    try {
+      const blob = await ttsApi.synthesize(text);
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.addEventListener('ended', () => URL.revokeObjectURL(url));
+      void audio.play();
+    } catch (err) {
+      const message = err instanceof ApiException ? err.message : '음성 재생에 실패했습니다.';
+      alert(message);
     }
-    setShowRecordModal(true);
-    setHasRecording(false);
   };
 
-  const handleStartRecording = () => {
-    setIsRecording(true);
-    setHasRecording(false);
-    console.log('녹음 시작');
-  };
-
-  const handleStopRecording = () => {
-    setIsRecording(false);
-    setHasRecording(true);
-    setHasCompletedRecording(true);
-    console.log('녹음 완료');
-  };
-
-  const handleDiscardRecording = () => {
-    setHasRecording(false);
-    console.log('녹음 폐기');
-  };
-
-  const handleUseRecording = () => {
-    if (!hasRecording) {
-      alert('녹음을 먼저 완료해주세요.');
-      return;
+  const advanceAfterRecord = () => {
+    if (!script) return;
+    const next: ChatItem[] = [];
+    let cursor = stepIndex + 1;
+    while (cursor < script.steps.length) {
+      next.push({ kind: 'bot-step', step: script.steps[cursor] });
+      if (script.steps[cursor].kind === 'RECORD') break;
+      cursor += 1;
     }
-    
-    setShowRecordModal(false);
-    setHasRecording(false);
-    
-    // 다음 스텝으로 이동
-    if (currentStep < problems[currentProblem].steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-      setHasCompletedRecording(false); // 다음 단계로 넘어갈 때 리셋
+    if (next.length > 0) {
+      setChat((prev) => [...prev, ...next]);
+      setStepIndex(cursor);
     } else {
-      // 현재 문제의 마지막 스텝이면 다음 문제로
-      if (currentProblem < problems.length - 1) {
-        setCurrentProblem(currentProblem + 1);
-        setCurrentStep(0);
-        setHasCompletedRecording(false); // 다음 문제로 넘어갈 때 리셋
-      } else {
-        // 모든 문제 완료 - 마지막 녹음을 저장했으므로 여기서는 리셋하지 않음
-        alert('모든 문제를 완료했습니다!');
-      }
+      setStepIndex(cursor);
+      setUnitDone(true);
     }
   };
+
+  const handleStartRecording = async () => {
+    await recorder.start();
+  };
+
+  const handleStopRecording = async () => {
+    if (!currentStep || currentStep.kind !== 'RECORD' || !script || busyStep) return;
+    setBusyStep(true);
+    const result = await recorder.stop();
+    if (!result) {
+      setBusyStep(false);
+      return;
+    }
+    try {
+      const uploaded = await recordingsApi.upload({
+        audio: result.blob,
+        filename: `step-${currentStep.id}.wav`,
+        scriptId: script.id,
+        stepId: currentStep.id,
+      });
+      setRecordingIds((prev) => [...prev, uploaded.id]);
+      setChat((prev) => [
+        ...prev,
+        { kind: 'user-record', key: `u-${uploaded.id}`, score: uploaded.stepScore ?? null },
+      ]);
+      advanceAfterRecord();
+    } catch (err) {
+      const message = err instanceof ApiException ? err.message : '녹음 업로드에 실패했습니다.';
+      alert(message);
+    } finally {
+      setBusyStep(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!unitDone || feedback || generating || !script) return;
+    setGenerating(true);
+    feedbackApi
+      .generate({ scriptId: script.id, recordingIds })
+      .then(setFeedback)
+      .catch((err: unknown) => {
+        const message = err instanceof ApiException ? err.message : '피드백 생성에 실패했습니다.';
+        alert(message);
+      })
+      .finally(() => setGenerating(false));
+  }, [unitDone, feedback, generating, script, recordingIds]);
 
   const handleEndLearning = () => {
     if (confirm('학습을 끝내시겠습니까?')) {
-      navigate('/recommended-learning', { state: { nickname } });
+      navigate('/recommended-learning');
     }
   };
 
-  const handleGoToFeedback = () => {
-    navigate('/feedbacks', { state: { nickname } });
-  };
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{loadError}</p>
+          <Button onClick={() => navigate('/recommended-learning')}>돌아가기</Button>
+        </div>
+      </div>
+    );
+  }
 
-  const isLastStep = currentProblem === problems.length - 1 && 
-                     currentStep === problems[currentProblem].steps.length - 1;
+  if (!script) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-500">불러오는 중...</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* 메인 컨텐츠 */}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="flex-1 p-6 pb-24">
-        {/* 상태 헤더 */}
-        <StatusHeader streak={5} exp={250} />
-        
-        {/* 뒤로가기 버튼 */}
+        <StatusHeader />
+
         <div className="flex justify-end mb-4">
           <button
             onClick={() => navigate(-1)}
@@ -138,164 +191,94 @@ export default function PronunciationPractice() {
           </button>
         </div>
 
-        {/* 세션 제목 및 스피커 */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">발음 연습: R vs L</h1>
-            </div>
-            <button
-              onClick={handlePlayAudio}
-              className="p-3 bg-sky-500 hover:bg-sky-600 rounded-full transition-colors"
-            >
-              <Volume2 size={24} className="text-white" />
-            </button>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900">{script.title}</h1>
         </div>
 
-        {/* 문제 번호 */}
-        <div className="mb-2">
-          <p className="text-lg font-bold text-gray-700">#{currentProblem + 1}</p>
-        </div>
+        <div className="space-y-4">
+          {chat.map((item, idx) => {
+            if (item.kind === 'user-record') {
+              const scoreLabel = item.score !== null ? ` · ${item.score.toFixed(1)}점` : '';
+              return <UserBubble key={item.key}>녹음 완료!{scoreLabel}</UserBubble>;
+            }
+            const step = item.step;
+            const isLatestRecordPrompt =
+              step.kind === 'RECORD' &&
+              !unitDone &&
+              currentStep !== null &&
+              step.id === currentStep.id &&
+              idx === chat.length - 1;
+            return (
+              <BotBubble key={`step-${step.id}`}>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <p className="text-base text-gray-900 leading-relaxed flex-1">
+                    {step.prompt}
+                    {step.targetText && (
+                      <span className="block mt-2 text-lg font-bold">{step.targetText}</span>
+                    )}
+                  </p>
+                  {step.kind === 'RECORD' && step.targetText && (
+                    <button
+                      onClick={() => handlePlayAudio(step.targetText)}
+                      className="p-2 bg-sky-500 hover:bg-sky-600 rounded-full transition-colors flex-shrink-0"
+                    >
+                      <Volume2 size={18} className="text-white" />
+                    </button>
+                  )}
+                </div>
+                {isLatestRecordPrompt && (
+                  <button
+                    onClick={recorder.isRecording ? handleStopRecording : handleStartRecording}
+                    disabled={busyStep}
+                    className={`w-full flex items-center justify-center gap-2 h-12 bg-white border-2 ${
+                      recorder.isRecording
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50'
+                    } text-gray-900 font-medium rounded-xl transition-colors disabled:opacity-50`}
+                  >
+                    <Mic
+                      size={20}
+                      className={recorder.isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600'}
+                    />
+                    <span>{recorder.isRecording ? '녹음 끝내기' : '녹음 시작'}</span>
+                  </button>
+                )}
+              </BotBubble>
+            );
+          })}
 
-        {/* 현재 문장 표시 */}
-        <div className="mb-4">
-          <div className="w-full min-h-64 p-4 border-2 border-gray-300 rounded-2xl bg-gray-50">
-            <p className="text-lg text-gray-900 leading-relaxed">
-              {problems[currentProblem].steps[currentStep]}
-            </p>
-          </div>
-        </div>
-
-        {/* 진행 상태 표시 */}
-        <div className="mb-6">
-          <p className="text-sm text-gray-500">
-            문제 {currentProblem + 1}/{problems.length} - 단계 {currentStep + 1}/
-            {problems[currentProblem].steps.length}
-          </p>
-        </div>
-
-        {/* 안내 문구 */}
-        <p className="text-sm text-gray-500 mb-6">
-          하단의 녹음 버튼을 누르고 지시에 따라 발음해 보세요.
-        </p>
-
-        {/* 버튼들 */}
-        <div className="space-y-3">
-          {/* 안내 문구 단계에서는 다음 버튼 표시 */}
-          {currentStep === 0 && (
-            <Button
-              onClick={() => setCurrentStep(1)}
-              className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl flex items-center justify-center gap-2"
-            >
-              <span>다음</span>
-              <ArrowRight size={20} />
-            </Button>
+          {generating && (
+            <BotBubble>
+              <p className="text-sm text-gray-500">종합 피드백을 생성하는 중...</p>
+            </BotBubble>
           )}
-          
-          {hasCompletedRecording && (
-            <Button
-              onClick={handleGoToFeedback}
-              className="w-full h-12 bg-green-500 hover:bg-green-600 text-white font-medium rounded-xl flex items-center justify-center gap-2"
-            >
-              <span>피드백 보러 가기</span>
-              <ArrowRight size={20} />
-            </Button>
-          )}
-          <Button
-            onClick={handleEndLearning}
-            variant="outline"
-            className="w-full h-12 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-xl"
-          >
-            학습 끝내기
-          </Button>
+          {feedback && <FeedbackFlow feedback={feedback} />}
         </div>
+
+        {!unitDone && (
+          <div className="mt-8">
+            <Button
+              onClick={handleEndLearning}
+              variant="outline"
+              className="w-full h-12 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-xl"
+            >
+              학습 끝내기
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* 녹음 모달 */}
-      {showRecordModal && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-6">
-          <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-            {/* 모달 헤더 */}
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">녹음</h2>
-              <button
-                onClick={() => setShowRecordModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={24} className="text-gray-700" />
-              </button>
-            </div>
-
-            {/* 녹음 상태 표시 */}
-            {hasRecording && (
-              <div className="mb-4 flex items-center gap-2 bg-sky-50 p-4 rounded-xl">
-                <Check size={24} className="text-sky-500" />
-                <p className="text-gray-900 font-medium">녹음 완료!</p>
-              </div>
-            )}
-
-            {/* 녹음 시작/끝내기 버튼 */}
-            <button
-              onClick={isRecording ? handleStopRecording : handleStartRecording}
-              className={`w-full h-14 flex items-center justify-center gap-3 bg-white border-2 ${
-                isRecording 
-                  ? 'border-red-500 bg-red-50' 
-                  : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50'
-              } text-gray-900 font-medium rounded-xl transition-colors mb-6`}
-            >
-              <Mic size={24} className={`${isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600'}`} />
-              <span>{isRecording ? '녹음 끝내기' : hasRecording ? '다시 녹음하기' : '녹음 시작'}</span>
-            </button>
-
-            {/* 사용하기 버튼 */}
-            <Button
-              onClick={handleUseRecording}
-              disabled={!hasRecording}
-              className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl flex items-center justify-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              <span>사용하기</span>
-              <ArrowRight size={24} />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* 하단 네비게이션 바 */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
         <div className="flex justify-around items-center h-20">
-          {/* 홈 */}
           <button
-            onClick={() => handleNavigation('/main')}
+            onClick={() => navigate('/main')}
             className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
           >
             <Home size={28} />
             <span className="text-xs font-medium mt-1">홈</span>
           </button>
-
-          {/* 녹음 */}
           <button
-            onClick={handleOpenRecordModal}
-            disabled={isRecording || currentStep === 0}
-            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-              isRecording
-                ? 'text-red-500'
-                : currentStep === 0
-                ? 'text-gray-300 cursor-not-allowed'
-                : 'text-gray-400 hover:text-sky-500'
-            }`}
-          >
-            <div className={`${isRecording ? 'animate-pulse' : ''}`}>
-              <Mic size={28} />
-            </div>
-            <span className="text-xs font-medium mt-1">
-              {isRecording ? '녹음중...' : '녹음'}
-            </span>
-          </button>
-
-          {/* 프로필 */}
-          <button
-            onClick={() => handleNavigation('/profile')}
+            onClick={() => navigate('/profile')}
             className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
           >
             <User size={28} />

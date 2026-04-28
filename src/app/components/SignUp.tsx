@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
+import { ApiException, authApi } from '../api';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function SignUp() {
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [isSignUpComplete, setIsSignUpComplete] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     id: '',
     password: '',
@@ -24,38 +26,59 @@ export default function SignUp() {
     email: false,
   });
 
-  const handleCheckDuplicate = (field: 'id' | 'email') => {
-    // 중복 확인 로직 (실제로는 서버 API 호출)
-    console.log(`${field} 중복 확인:`, formData[field]);
-    setCheckResults({ ...checkResults, [field]: true });
-    alert(`사용 가능한 ${field === 'id' ? '아이디' : '이메일'}입니다.`);
+  const handleCheckDuplicate = async (field: 'id' | 'email') => {
+    const value = formData[field];
+    if (!value) return;
+    try {
+      const result = field === 'id'
+        ? await authApi.checkUsername(value)
+        : await authApi.checkEmail(value);
+      setCheckResults((prev) => ({ ...prev, [field]: result.available }));
+      const label = field === 'id' ? '아이디' : '이메일';
+      alert(result.available ? `사용 가능한 ${label}입니다.` : `이미 사용 중인 ${label}입니다.`);
+    } catch (err) {
+      const message = err instanceof ApiException ? err.message : '중복 확인에 실패했습니다.';
+      alert(message);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (submitting) return;
+
     if (!checkResults.id) {
       alert('아이디 중복확인을 해주세요.');
       return;
     }
-    
     if (!checkResults.email) {
       alert('이메일 중복확인을 해주세요.');
       return;
     }
-    
     if (formData.password !== formData.passwordConfirm) {
       alert('비밀번호가 일치하지 않습니다.');
       return;
     }
-    
     if (!agreed) {
       alert('서비스 이용약관에 동의해주세요.');
       return;
     }
-    
-    console.log('회원가입:', formData);
-    setIsSignUpComplete(true);
+
+    setSubmitting(true);
+    try {
+      await authApi.signup({
+        username: formData.id,
+        password: formData.password,
+        nickname: formData.nickname,
+        email: formData.email,
+        agreedTerms: true,
+      });
+      setIsSignUpComplete(true);
+    } catch (err) {
+      const message = err instanceof ApiException ? err.message : '회원가입에 실패했습니다.';
+      alert(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // 회원가입 완료 화면

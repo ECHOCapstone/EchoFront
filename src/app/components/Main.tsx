@@ -1,15 +1,16 @@
-import { useLocation, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { Home, LineChart, User } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
+import { useAuth } from '../auth/useAuth';
 
 export default function Main() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const nickname = location.state?.nickname || '사용자';
+  const { user } = useAuth();
+  const nickname = user?.nickname ?? '사용자';
 
   const handleNavigation = (path: string) => {
-    navigate(path, { state: { nickname } });
+    navigate(path);
   };
 
   return (
@@ -17,7 +18,7 @@ export default function Main() {
       {/* 메인 컨텐츠 */}
       <div className="flex-1 p-6 pb-24">
         {/* 상태 헤더 */}
-        <StatusHeader streak={5} exp={250} />
+        <StatusHeader />
         
         {/* 환영 메시지 */}
         <div className="mb-8">
@@ -29,7 +30,7 @@ export default function Main() {
         <div className="space-y-4">
           {/* 오늘의 추천 학습 버튼 */}
           <Button
-            onClick={() => navigate('/recommended-learning', { state: { nickname } })}
+            onClick={() => navigate('/recommended-learning')}
             className="w-full h-48 bg-sky-500 hover:bg-sky-600 text-white shadow-lg rounded-3xl"
           >
             <div className="text-center">
@@ -40,7 +41,7 @@ export default function Main() {
 
           {/* 맞춤 학습 버튼 */}
           <Button
-            onClick={() => navigate('/custom-learning', { state: { nickname } })}
+            onClick={() => navigate('/custom-learning')}
             className="w-full h-48 bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg rounded-3xl"
           >
             <div className="text-center">

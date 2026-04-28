@@ -1,27 +1,57 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
+import { useAuth } from '../auth/useAuth';
+import { ApiException } from '../api';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login, loginWithGoogleMock, isAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     id: '',
     password: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (isAuthenticated) navigate('/main', { replace: true });
+  }, [isAuthenticated, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    // 로그인 성공 시 메인 페이지로 이동 (닉네임은 임시로 아이디 사용)
-    navigate('/main', { state: { nickname: formData.id || '사용자' } });
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await login({ username: formData.id, password: formData.password });
+      navigate('/main', { replace: true });
+    } catch (err) {
+      const message = err instanceof ApiException ? err.message : '로그인에 실패했습니다.';
+      alert(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    console.log(`${provider} 로그인`);
+  const handleSocialLogin = async (provider: string) => {
+    if (provider !== 'Google') {
+      alert(`${provider} 로그인은 아직 준비 중입니다.`);
+      return;
+    }
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await loginWithGoogleMock();
+      navigate('/main', { replace: true });
+    } catch (err) {
+      const message = err instanceof ApiException ? err.message : '소셜 로그인에 실패했습니다.';
+      alert(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

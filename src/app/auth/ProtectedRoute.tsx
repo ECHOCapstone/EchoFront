@@ -1,0 +1,18 @@
+// 인증된 사용자만 접근 가능한 라우트 가드. 토큰 검증 중에는 빈 화면을, 미인증이면 / 로 리다이렉트한다.
+
+import { Navigate, useLocation } from 'react-router';
+import { useAuth } from './useAuth';
+import type { ReactNode } from 'react';
+
+export function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { state } = useAuth();
+  const location = useLocation();
+
+  if (state.status === 'loading') {
+    return null;
+  }
+  if (state.status === 'unauthenticated') {
+    return <Navigate to="/" replace state={{ from: location.pathname }} />;
+  }
+  return <>{children}</>;
+}
