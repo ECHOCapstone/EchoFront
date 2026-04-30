@@ -5,11 +5,12 @@ import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { useAuth } from '../auth/useAuth';
-import { ApiException } from '../api';
+import { paths } from '../lib/paths';
+import { notifyApiError } from '../lib/notify';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, loginWithGoogleMock, isAuthenticated } = useAuth();
+  const { login, loginWithGoogleDemo, isAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,7 +19,7 @@ export default function Login() {
   });
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/main', { replace: true });
+    if (isAuthenticated) navigate(paths.main, { replace: true });
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,10 +28,9 @@ export default function Login() {
     setSubmitting(true);
     try {
       await login({ username: formData.id, password: formData.password });
-      navigate('/main', { replace: true });
+      navigate(paths.main, { replace: true });
     } catch (err) {
-      const message = err instanceof ApiException ? err.message : '로그인에 실패했습니다.';
-      alert(message);
+      notifyApiError(err, '로그인에 실패했습니다.');
     } finally {
       setSubmitting(false);
     }
@@ -44,11 +44,10 @@ export default function Login() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      await loginWithGoogleMock();
-      navigate('/main', { replace: true });
+      await loginWithGoogleDemo();
+      navigate(paths.main, { replace: true });
     } catch (err) {
-      const message = err instanceof ApiException ? err.message : '소셜 로그인에 실패했습니다.';
-      alert(message);
+      notifyApiError(err, '소셜 로그인에 실패했습니다.');
     } finally {
       setSubmitting(false);
     }
@@ -104,9 +103,10 @@ export default function Login() {
           {/* 로그인 버튼 */}
           <Button
             type="submit"
-            className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium"
+            disabled={submitting}
+            className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium disabled:opacity-60"
           >
-            로그인
+            {submitting ? '로그인 중...' : '로그인'}
           </Button>
 
           {/* 소셜 로그인 */}
@@ -165,7 +165,7 @@ export default function Login() {
         <div className="mt-8">
           <Button
             type="button"
-            onClick={() => navigate('/signup')}
+            onClick={() => navigate(paths.signup)}
             variant="outline"
             className="w-full h-12 border-sky-500 text-sky-500 hover:bg-sky-50 font-medium"
           >

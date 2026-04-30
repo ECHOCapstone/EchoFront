@@ -6,8 +6,10 @@ import { useNavigate } from 'react-router';
 import { Check, Mic, Sparkles, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { BotBubble, UserBubble } from './ChatBubble';
-import { ApiException, feedbackApi, type Feedback } from '../api';
+import { feedbackApi, type Feedback } from '../api';
 import { useRecorder } from '../hooks/useRecorder';
+import { paths } from '../lib/paths';
+import { notifyApiError } from '../lib/notify';
 
 interface FeedbackFlowProps {
   feedback: Feedback;
@@ -53,8 +55,7 @@ export default function FeedbackFlow({ feedback }: FeedbackFlowProps) {
         },
       ]);
     } catch (err) {
-      const message = err instanceof ApiException ? err.message : '재연습 평가에 실패했습니다.';
-      alert(message);
+      notifyApiError(err, '재연습 평가에 실패했습니다.');
     } finally {
       setBusy(false);
     }
@@ -64,7 +65,7 @@ export default function FeedbackFlow({ feedback }: FeedbackFlowProps) {
 
   const handleClosePopup = () => {
     setShowExpPopup(false);
-    navigate('/ranking');
+    navigate(paths.ranking);
   };
 
   return (

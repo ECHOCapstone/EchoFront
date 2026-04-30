@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Home, LineChart, User, Flame, Star } from 'lucide-react';
+import { Flame, Star } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
-import { ApiException, scriptsApi, type ScriptSummary } from '../api';
+import BottomNav from './layout/BottomNav';
+import { scriptsApi, type ScriptSummary } from '../api';
+import { paths } from '../lib/paths';
+import { notifyApiError } from '../lib/notify';
 
 export default function RecommendedLearning() {
   const navigate = useNavigate();
@@ -17,15 +20,13 @@ export default function RecommendedLearning() {
     scriptsApi
       .recommendedToday()
       .then((data) => {
-        if (!cancelled) {
-          setUnits(data);
-          setError(null);
-        }
+        if (cancelled) return;
+        setUnits(data);
+        setError(null);
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(err instanceof ApiException ? err.message : '추천 학습을 불러오지 못했습니다.');
-        }
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : '추천 학습을 불러오지 못했습니다.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -34,10 +35,6 @@ export default function RecommendedLearning() {
       cancelled = true;
     };
   }, []);
-
-  const handleUnitClick = (unit: ScriptSummary) => {
-    navigate(`/pronunciation-practice?scriptId=${unit.id}`);
-  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -58,7 +55,7 @@ export default function RecommendedLearning() {
           {!loading && !error && units.map((unit) => (
             <Button
               key={unit.id}
-              onClick={() => handleUnitClick(unit)}
+              onClick={() => navigate(paths.pronunciationPractice(unit.id))}
               variant="outline"
               className="w-full h-24 border-2 border-gray-300 hover:border-sky-500 hover:bg-sky-50 text-gray-900 rounded-2xl flex items-center justify-start px-6"
             >
@@ -74,31 +71,7 @@ export default function RecommendedLearning() {
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="flex justify-around items-center h-20">
-          <button
-            onClick={() => navigate('/main')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <Home size={28} />
-            <span className="text-xs font-medium mt-1">홈</span>
-          </button>
-          <button
-            onClick={() => navigate('/stats')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <LineChart size={28} />
-            <span className="text-xs font-medium mt-1">통계</span>
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <User size={28} />
-            <span className="text-xs font-medium mt-1">프로필</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav active="home" />
     </div>
   );
 }

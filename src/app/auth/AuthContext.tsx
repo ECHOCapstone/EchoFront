@@ -24,7 +24,7 @@ export type AuthContextValue = {
   isAuthenticated: boolean;
   login: (input: LoginInput) => Promise<User>;
   signup: (input: SignupInput) => Promise<User>;
-  loginWithGoogleMock: () => Promise<User>;
+  loginWithGoogleDemo: () => Promise<User>;
   logout: () => void;
   refresh: () => Promise<void>;
 };
@@ -82,8 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applyToken]
   );
 
-  const loginWithGoogleMock = useCallback<AuthContextValue['loginWithGoogleMock']>(
-    async () => applyToken(await authApi.mockGoogleLogin()),
+  const loginWithGoogleDemo = useCallback<AuthContextValue['loginWithGoogleDemo']>(
+    async () => applyToken(await authApi.demoGoogleLogin()),
     [applyToken]
   );
 
@@ -99,11 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: state.status === 'authenticated',
       login,
       signup,
-      loginWithGoogleMock,
+      loginWithGoogleDemo,
       logout,
       refresh,
     }),
-    [state, login, signup, loginWithGoogleMock, logout, refresh]
+    [state, login, signup, loginWithGoogleDemo, logout, refresh]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

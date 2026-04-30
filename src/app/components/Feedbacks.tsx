@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Check, Home, LineChart, User } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import StatusHeader from './StatusHeader';
+import BottomNav from './layout/BottomNav';
 import FeedbackFlow from './FeedbackFlow';
 import { ApiException, feedbackApi, type Feedback } from '../api';
 
@@ -68,31 +69,7 @@ export default function Feedbacks() {
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="flex justify-around items-center h-20">
-          <button
-            onClick={() => navigate('/main')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <Home size={28} />
-            <span className="text-xs font-medium mt-1">홈</span>
-          </button>
-          <button
-            onClick={() => navigate('/stats')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <LineChart size={28} />
-            <span className="text-xs font-medium mt-1">통계</span>
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <User size={28} />
-            <span className="text-xs font-medium mt-1">프로필</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav active="home" />
     </div>
   );
 }

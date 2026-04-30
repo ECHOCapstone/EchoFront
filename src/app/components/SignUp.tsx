@@ -5,7 +5,9 @@ import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
-import { ApiException, authApi } from '../api';
+import { authApi } from '../api';
+import { paths } from '../lib/paths';
+import { notifyApiError } from '../lib/notify';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -37,8 +39,7 @@ export default function SignUp() {
       const label = field === 'id' ? '아이디' : '이메일';
       alert(result.available ? `사용 가능한 ${label}입니다.` : `이미 사용 중인 ${label}입니다.`);
     } catch (err) {
-      const message = err instanceof ApiException ? err.message : '중복 확인에 실패했습니다.';
-      alert(message);
+      notifyApiError(err, '중복 확인에 실패했습니다.');
     }
   };
 
@@ -74,8 +75,7 @@ export default function SignUp() {
       });
       setIsSignUpComplete(true);
     } catch (err) {
-      const message = err instanceof ApiException ? err.message : '회원가입에 실패했습니다.';
-      alert(message);
+      notifyApiError(err, '회원가입에 실패했습니다.');
     } finally {
       setSubmitting(false);
     }
@@ -96,7 +96,7 @@ export default function SignUp() {
           </div>
 
           <Button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(paths.login)}
             className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium"
           >
             로그인하기
@@ -119,7 +119,7 @@ export default function SignUp() {
         {/* 헤더 */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(paths.login)}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
           >
             <ArrowLeft size={20} className="mr-2" />
@@ -263,12 +263,12 @@ export default function SignUp() {
             </div>
           </div>
 
-          {/* 가입하기 버튼 */}
           <Button
             type="submit"
-            className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium mt-6"
+            disabled={submitting}
+            className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium mt-6 disabled:opacity-60"
           >
-            가입하기
+            {submitting ? '처리 중...' : '가입하기'}
           </Button>
         </form>
 

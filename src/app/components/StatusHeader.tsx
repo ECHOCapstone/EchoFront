@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Flame, Zap } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
+import { paths } from '../lib/paths';
 
 interface StatusHeaderProps {
   streak?: number;
@@ -16,7 +17,7 @@ export default function StatusHeader({ streak, exp }: StatusHeaderProps) {
   const streakValue = streak ?? user?.streak ?? 0;
   const expValue = exp ?? user?.exp ?? 0;
 
-  const goStats = () => navigate('/stats');
+  const goStats = () => navigate(paths.stats);
 
   return (
     <div className="flex items-center justify-end gap-2 mb-4">

@@ -5,24 +5,20 @@
 //   4. 녹음 결과 → POST /api/feedback/generate (sessionId, recordingIds=[uploaded])
 //   5. FeedbackFlow 노출
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeft, Home, Mic, Pencil, User, Volume2 } from 'lucide-react';
+import { ArrowLeft, Mic, Pencil, Volume2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import StatusHeader from './StatusHeader';
+import BottomNav from './layout/BottomNav';
 import { BotBubble, UserBubble } from './ChatBubble';
 import FeedbackFlow from './FeedbackFlow';
-import {
-  ApiException,
-  feedbackApi,
-  recordingsApi,
-  sessionsApi,
-  ttsApi,
-  type Feedback,
-  type Session,
-} from '../api';
+import { feedbackApi, recordingsApi, sessionsApi, type Feedback, type Session } from '../api';
 import { useRecorder } from '../hooks/useRecorder';
+import { useTtsPlayer } from '../hooks/useTtsPlayer';
+import { paths } from '../lib/paths';
+import { notifyApiError } from '../lib/notify';
 
 export default function SessionDetail() {
   const navigate = useNavigate();
@@ -34,6 +30,7 @@ export default function SessionDetail() {
   }, [searchParams]);
 
   const recorder = useRecorder();
+  const tts = useTtsPlayer();
   const [session, setSession] = useState<Session | null>(null);
   const [scriptDraft, setScriptDraft] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -41,9 +38,11 @@ export default function SessionDetail() {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const chatBottomRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     if (sessionId === null) {
-      navigate('/custom-learning', { replace: true });
+      navigate(paths.customLearning, { replace: true });
       return;
     }
     let cancelled = false;
@@ -56,14 +55,17 @@ export default function SessionDetail() {
         setSubmitted(data.scriptText.trim().length > 0);
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          alert(err instanceof ApiException ? err.message : '세션을 불러오지 못했습니다.');
-        }
+        if (!cancelled) notifyApiError(err, '세션을 불러오지 못했습니다.');
       });
     return () => {
       cancelled = true;
     };
   }, [sessionId, navigate]);
+
+  // 새 단계가 추가되면 자동으로 화면 가장 아래로 스크롤한다.
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [submitted, recordingId, feedback, busy]);
 
   const handleTitleEdit = async () => {
     if (!session) return;
@@ -73,7 +75,7 @@ export default function SessionDetail() {
       const updated = await sessionsApi.update(session.id, { title: newTitle.trim() });
       setSession(updated);
     } catch (err) {
-      alert(err instanceof ApiException ? err.message : '제목 수정에 실패했습니다.');
+      notifyApiError(err, '제목 수정에 실패했습니다.');
     }
   };
 
@@ -88,20 +90,7 @@ export default function SessionDetail() {
       setSession(updated);
       setSubmitted(true);
     } catch (err) {
-      alert(err instanceof ApiException ? err.message : '대본 저장에 실패했습니다.');
-    }
-  };
-
-  const handlePlayAudio = async () => {
-    if (!session?.scriptText) return;
-    try {
-      const blob = await ttsApi.synthesize(session.scriptText);
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.addEventListener('ended', () => URL.revokeObjectURL(url));
-      void audio.play();
-    } catch (err) {
-      alert(err instanceof ApiException ? err.message : '음성 재생에 실패했습니다.');
+      notifyApiError(err, '대본 저장에 실패했습니다.');
     }
   };
 
@@ -131,7 +120,7 @@ export default function SessionDetail() {
       });
       setFeedback(generated);
     } catch (err) {
-      alert(err instanceof ApiException ? err.message : '평가에 실패했습니다.');
+      notifyApiError(err, '평가에 실패했습니다.');
     } finally {
       setBusy(false);
     }
@@ -139,7 +128,7 @@ export default function SessionDetail() {
 
   const handleEndLearning = () => {
     if (confirm('학습을 끝내시겠습니까?')) {
-      navigate('/custom-learning');
+      navigate(paths.customLearning);
     }
   };
 
@@ -156,6 +145,7 @@ export default function SessionDetail() {
           <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="뒤로가기"
           >
             <ArrowLeft size={24} className="text-gray-700" />
           </button>
@@ -167,6 +157,7 @@ export default function SessionDetail() {
             <button
               onClick={handleTitleEdit}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="제목 수정"
             >
               <Pencil size={20} className="text-gray-600" />
             </button>
@@ -181,9 +172,7 @@ export default function SessionDetail() {
           </BotBubble>
 
           <BotBubble>
-            <p className="text-gray-800 mb-3">
-              아래 입력창에 연습할 문장을 적어주세요.
-            </p>
+            <p className="text-gray-800 mb-3">아래 입력창에 연습할 문장을 적어주세요.</p>
             <Textarea
               value={scriptDraft}
               onChange={(e) => setScriptDraft(e.target.value)}
@@ -211,8 +200,9 @@ export default function SessionDetail() {
                     좋아요! 위 대본을 녹음해 보세요.
                   </p>
                   <button
-                    onClick={handlePlayAudio}
+                    onClick={() => tts.play(session.scriptText)}
                     className="p-2 bg-sky-500 hover:bg-sky-600 rounded-full transition-colors flex-shrink-0"
+                    aria-label="예시 음성 듣기"
                   >
                     <Volume2 size={18} className="text-white" />
                   </button>
@@ -231,7 +221,7 @@ export default function SessionDetail() {
                       size={20}
                       className={recorder.isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600'}
                     />
-                    <span>{recorder.isRecording ? '녹음 끝내기' : '녹음 시작'}</span>
+                    <span>{recorder.isRecording ? '녹음 끝내기' : busy ? '평가 중...' : '녹음 시작'}</span>
                   </button>
                 )}
               </BotBubble>
@@ -240,6 +230,7 @@ export default function SessionDetail() {
 
           {recordingId !== null && <UserBubble>녹음 완료!</UserBubble>}
           {feedback && <FeedbackFlow feedback={feedback} />}
+          <div ref={chatBottomRef} />
         </div>
 
         {!feedback && (
@@ -255,24 +246,7 @@ export default function SessionDetail() {
         )}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="flex justify-around items-center h-20">
-          <button
-            onClick={() => navigate('/main')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <Home size={28} />
-            <span className="text-xs font-medium mt-1">홈</span>
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <User size={28} />
-            <span className="text-xs font-medium mt-1">프로필</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav variant="study" active="home" />
     </div>
   );
 }

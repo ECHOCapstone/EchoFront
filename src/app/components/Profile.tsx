@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, FileText, Home, LineChart, Lock, LogOut, User, UserX } from 'lucide-react';
+import { Bell, FileText, Lock, LogOut, User, UserX } from 'lucide-react';
 import StatusHeader from './StatusHeader';
+import BottomNav from './layout/BottomNav';
 import { useAuth } from '../auth/useAuth';
+import { paths } from '../lib/paths';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -25,7 +27,7 @@ export default function Profile() {
   const handleLogout = () => {
     if (confirm('로그아웃 하시겠습니까?')) {
       logout();
-      navigate('/', { replace: true });
+      navigate(paths.login, { replace: true });
     }
   };
 
@@ -139,31 +141,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="flex justify-around items-center h-20">
-          <button
-            onClick={() => navigate('/main')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <Home size={28} />
-            <span className="text-xs font-medium mt-1">홈</span>
-          </button>
-          <button
-            onClick={() => navigate('/stats')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <LineChart size={28} />
-            <span className="text-xs font-medium mt-1">통계</span>
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-sky-500"
-          >
-            <User size={28} strokeWidth={2.5} />
-            <span className="text-xs font-medium mt-1">프로필</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav active="profile" />
     </div>
   );
 }

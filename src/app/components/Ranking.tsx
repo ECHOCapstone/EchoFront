@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Home, LineChart, Trophy, User } from 'lucide-react';
+import { ArrowLeft, Trophy } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
+import BottomNav from './layout/BottomNav';
 import { ApiException, rankingApi, type Ranking as RankingData } from '../api';
+import { paths } from '../lib/paths';
 
 export default function Ranking() {
   const navigate = useNavigate();
@@ -43,7 +45,7 @@ export default function Ranking() {
 
         <div className="flex justify-start mb-4">
           <button
-            onClick={() => navigate('/main')}
+            onClick={() => navigate(paths.main)}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <ArrowLeft size={24} className="text-gray-700" />
@@ -116,7 +118,7 @@ export default function Ranking() {
 
             <div className="mt-8">
               <Button
-                onClick={() => navigate('/main')}
+                onClick={() => navigate(paths.main)}
                 className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white text-lg font-bold rounded-2xl"
               >
                 홈으로 돌아가기
@@ -126,31 +128,7 @@ export default function Ranking() {
         )}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="flex justify-around items-center h-20">
-          <button
-            onClick={() => navigate('/main')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <Home size={28} />
-            <span className="text-xs font-medium mt-1">홈</span>
-          </button>
-          <button
-            onClick={() => navigate('/stats')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <LineChart size={28} />
-            <span className="text-xs font-medium mt-1">통계</span>
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <User size={28} />
-            <span className="text-xs font-medium mt-1">프로필</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav active="home" />
     </div>
   );
 }

@@ -1,29 +1,37 @@
-// 추천 학습 unit 진입 페이지. URL ?scriptId=N 으로 받은 학습 unit 의 단계를
-// 백엔드에서 받아 채팅 흐름을 그리고, 단계별로 녹음 → 업로드 → 점수 표시 → 다음 단계로 진행.
-// 마지막 단계 완료 시 종합 피드백을 생성해 FeedbackFlow 로 자연스럽게 이어진다.
+// 추천 학습 unit 진입 페이지. URL ?scriptId=N 의 학습 unit 단계를 백엔드에서 받아
+// 채팅 흐름을 그린다.
+//
+// 흐름
+//   bot-step(RECORD) 노출 → 사용자 녹음 → POST /api/recordings →
+//   user-record 버블(점수) + bot-feedback 버블(한국어 가이드 + 다음/다시 버튼) 노출 →
+//   사용자가 "다음 단계" 또는 "다시 발음하기" 선택. 같은 step 의 재녹음은 누적되며,
+//   종합 피드백 generate 호출 시에는 step 별 마지막 시도의 recordingId 만 전달한다.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeft, Home, Mic, User, Volume2 } from 'lucide-react';
+import { ArrowLeft, Mic, RotateCcw, Volume2 } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
+import BottomNav from './layout/BottomNav';
 import { BotBubble, UserBubble } from './ChatBubble';
 import FeedbackFlow from './FeedbackFlow';
 import {
-  ApiException,
   feedbackApi,
   recordingsApi,
   scriptsApi,
-  ttsApi,
   type Feedback,
   type LearningStep,
   type ScriptDetail,
 } from '../api';
 import { useRecorder } from '../hooks/useRecorder';
+import { useTtsPlayer } from '../hooks/useTtsPlayer';
+import { paths } from '../lib/paths';
+import { notifyApiError } from '../lib/notify';
 
 type ChatItem =
   | { kind: 'bot-step'; step: LearningStep }
-  | { kind: 'user-record'; key: string; score: number | null };
+  | { kind: 'user-record'; key: string; recordingId: number; stepId: number; score: number | null }
+  | { kind: 'bot-feedback'; key: string; stepId: number; guidanceKr: string; score: number | null };
 
 const NO_SCRIPT_FALLBACK_ID = 1;
 
@@ -37,16 +45,20 @@ export default function PronunciationPractice() {
   }, [searchParams]);
 
   const recorder = useRecorder();
+  const tts = useTtsPlayer();
 
   const [script, setScript] = useState<ScriptDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [chat, setChat] = useState<ChatItem[]>([]);
   const [stepIndex, setStepIndex] = useState(0);
-  const [recordingIds, setRecordingIds] = useState<number[]>([]);
+  // step.id → 가장 마지막 시도의 recordingId. 종합 피드백 generate 시 그대로 전송된다.
+  const [latestRecordingByStep, setLatestRecordingByStep] = useState<Record<number, number>>({});
   const [unitDone, setUnitDone] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [generating, setGenerating] = useState(false);
   const [busyStep, setBusyStep] = useState(false);
+
+  const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +67,6 @@ export default function PronunciationPractice() {
       .then((data) => {
         if (cancelled) return;
         setScript(data);
-        // 첫 진입 시 INTRO 메시지들과 첫 RECORD 메시지까지 미리 노출.
         const initial: ChatItem[] = [];
         let cursor = 0;
         while (cursor < data.steps.length) {
@@ -68,7 +79,7 @@ export default function PronunciationPractice() {
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setLoadError(err instanceof ApiException ? err.message : '학습 자료를 불러오지 못했습니다.');
+          setLoadError(err instanceof Error ? err.message : '학습 자료를 불러오지 못했습니다.');
         }
       });
     return () => {
@@ -76,39 +87,20 @@ export default function PronunciationPractice() {
     };
   }, [scriptId]);
 
+  // 새 채팅 메시지가 추가되면 자동으로 화면 가장 아래로 스크롤한다.
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [chat.length, feedback, generating]);
+
   const currentStep = script && stepIndex < script.steps.length ? script.steps[stepIndex] : null;
-
-  const handlePlayAudio = async (text: string | null) => {
-    if (!text) return;
-    try {
-      const blob = await ttsApi.synthesize(text);
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.addEventListener('ended', () => URL.revokeObjectURL(url));
-      void audio.play();
-    } catch (err) {
-      const message = err instanceof ApiException ? err.message : '음성 재생에 실패했습니다.';
-      alert(message);
+  // 가장 최근 bot-feedback 만 액션 가능. 그 이전 시도의 버튼들은 비활성화된다.
+  const latestFeedbackKey = useMemo(() => {
+    for (let i = chat.length - 1; i >= 0; i -= 1) {
+      const item = chat[i];
+      if (item.kind === 'bot-feedback') return item.key;
     }
-  };
-
-  const advanceAfterRecord = () => {
-    if (!script) return;
-    const next: ChatItem[] = [];
-    let cursor = stepIndex + 1;
-    while (cursor < script.steps.length) {
-      next.push({ kind: 'bot-step', step: script.steps[cursor] });
-      if (script.steps[cursor].kind === 'RECORD') break;
-      cursor += 1;
-    }
-    if (next.length > 0) {
-      setChat((prev) => [...prev, ...next]);
-      setStepIndex(cursor);
-    } else {
-      setStepIndex(cursor);
-      setUnitDone(true);
-    }
-  };
+    return null;
+  }, [chat]);
 
   const handleStartRecording = async () => {
     await recorder.start();
@@ -129,36 +121,70 @@ export default function PronunciationPractice() {
         scriptId: script.id,
         stepId: currentStep.id,
       });
-      setRecordingIds((prev) => [...prev, uploaded.id]);
+      setLatestRecordingByStep((prev) => ({ ...prev, [currentStep.id]: uploaded.id }));
       setChat((prev) => [
         ...prev,
-        { kind: 'user-record', key: `u-${uploaded.id}`, score: uploaded.stepScore ?? null },
+        {
+          kind: 'user-record',
+          key: `u-${uploaded.id}`,
+          recordingId: uploaded.id,
+          stepId: currentStep.id,
+          score: uploaded.stepScore ?? null,
+        },
+        {
+          kind: 'bot-feedback',
+          key: `f-${uploaded.id}`,
+          stepId: currentStep.id,
+          guidanceKr: uploaded.guidanceKr ?? '',
+          score: uploaded.stepScore ?? null,
+        },
       ]);
-      advanceAfterRecord();
     } catch (err) {
-      const message = err instanceof ApiException ? err.message : '녹음 업로드에 실패했습니다.';
-      alert(message);
+      notifyApiError(err, '녹음 업로드에 실패했습니다.');
     } finally {
       setBusyStep(false);
     }
   };
 
+  const handleAdvance = () => {
+    if (!script) return;
+    const next: ChatItem[] = [];
+    let cursor = stepIndex + 1;
+    while (cursor < script.steps.length) {
+      next.push({ kind: 'bot-step', step: script.steps[cursor] });
+      if (script.steps[cursor].kind === 'RECORD') break;
+      cursor += 1;
+    }
+    if (next.length > 0) {
+      setChat((prev) => [...prev, ...next]);
+      setStepIndex(cursor);
+    } else {
+      setStepIndex(cursor);
+      setUnitDone(true);
+    }
+  };
+
+  // 같은 step 을 다시 녹음하기 위해 현재 step prompt 를 채팅 끝에 한 번 더 노출한다.
+  const handleRetry = () => {
+    if (!currentStep) return;
+    setChat((prev) => [...prev, { kind: 'bot-step', step: currentStep }]);
+  };
+
   useEffect(() => {
     if (!unitDone || feedback || generating || !script) return;
+    const recordingIds = Object.values(latestRecordingByStep);
+    if (recordingIds.length === 0) return;
     setGenerating(true);
     feedbackApi
       .generate({ scriptId: script.id, recordingIds })
       .then(setFeedback)
-      .catch((err: unknown) => {
-        const message = err instanceof ApiException ? err.message : '피드백 생성에 실패했습니다.';
-        alert(message);
-      })
+      .catch((err: unknown) => notifyApiError(err, '피드백 생성에 실패했습니다.'))
       .finally(() => setGenerating(false));
-  }, [unitDone, feedback, generating, script, recordingIds]);
+  }, [unitDone, feedback, generating, script, latestRecordingByStep]);
 
   const handleEndLearning = () => {
     if (confirm('학습을 끝내시겠습니까?')) {
-      navigate('/recommended-learning');
+      navigate(paths.recommendedLearning);
     }
   };
 
@@ -167,7 +193,7 @@ export default function PronunciationPractice() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 mb-4">{loadError}</p>
-          <Button onClick={() => navigate('/recommended-learning')}>돌아가기</Button>
+          <Button onClick={() => navigate(paths.recommendedLearning)}>돌아가기</Button>
         </div>
       </div>
     );
@@ -176,6 +202,19 @@ export default function PronunciationPractice() {
   if (!script) {
     return <div className="min-h-screen flex items-center justify-center text-gray-500">불러오는 중...</div>;
   }
+
+  // 채팅의 가장 마지막 bot-step 이 현재 step 과 같고 RECORD 인 경우에만 녹음 버튼을 활성화한다.
+  // bot-feedback 이 그 다음에 붙어 있으면 사용자는 "다음/다시" 버튼으로 흐름을 결정한다.
+  const lastChatItem = chat[chat.length - 1];
+  const showRecordButton =
+    !unitDone &&
+    !feedback &&
+    !generating &&
+    currentStep !== null &&
+    currentStep.kind === 'RECORD' &&
+    lastChatItem !== undefined &&
+    lastChatItem.kind === 'bot-step' &&
+    lastChatItem.step.id === currentStep.id;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -186,6 +225,7 @@ export default function PronunciationPractice() {
           <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="뒤로가기"
           >
             <ArrowLeft size={24} className="text-gray-700" />
           </button>
@@ -201,15 +241,40 @@ export default function PronunciationPractice() {
               const scoreLabel = item.score !== null ? ` · ${item.score.toFixed(1)}점` : '';
               return <UserBubble key={item.key}>녹음 완료!{scoreLabel}</UserBubble>;
             }
+            if (item.kind === 'bot-feedback') {
+              const isActive = item.key === latestFeedbackKey && !unitDone && !feedback && !generating;
+              return (
+                <BotBubble key={item.key}>
+                  <p className="text-base text-gray-900 leading-relaxed mb-3">
+                    {item.guidanceKr || '발음 결과를 확인했어요.'}
+                  </p>
+                  {isActive && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleRetry}
+                        disabled={busyStep}
+                        className="flex-1 flex items-center justify-center gap-1.5 h-11 bg-white border-2 border-gray-300 hover:border-orange-400 hover:bg-orange-50 text-gray-900 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                      >
+                        <RotateCcw size={16} className="text-orange-500" />
+                        <span>다시 발음하기</span>
+                      </button>
+                      <button
+                        onClick={handleAdvance}
+                        disabled={busyStep}
+                        className="flex-1 h-11 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                      >
+                        다음 단계로
+                      </button>
+                    </div>
+                  )}
+                </BotBubble>
+              );
+            }
             const step = item.step;
-            const isLatestRecordPrompt =
-              step.kind === 'RECORD' &&
-              !unitDone &&
-              currentStep !== null &&
-              step.id === currentStep.id &&
-              idx === chat.length - 1;
+            const isPrompt =
+              step.kind === 'RECORD' && idx === chat.length - 1 && showRecordButton;
             return (
-              <BotBubble key={`step-${step.id}`}>
+              <BotBubble key={`step-${step.id}-${idx}`}>
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <p className="text-base text-gray-900 leading-relaxed flex-1">
                     {step.prompt}
@@ -219,14 +284,15 @@ export default function PronunciationPractice() {
                   </p>
                   {step.kind === 'RECORD' && step.targetText && (
                     <button
-                      onClick={() => handlePlayAudio(step.targetText)}
+                      onClick={() => tts.play(step.targetText)}
                       className="p-2 bg-sky-500 hover:bg-sky-600 rounded-full transition-colors flex-shrink-0"
+                      aria-label="예시 음성 듣기"
                     >
                       <Volume2 size={18} className="text-white" />
                     </button>
                   )}
                 </div>
-                {isLatestRecordPrompt && (
+                {isPrompt && (
                   <button
                     onClick={recorder.isRecording ? handleStopRecording : handleStartRecording}
                     disabled={busyStep}
@@ -240,7 +306,7 @@ export default function PronunciationPractice() {
                       size={20}
                       className={recorder.isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600'}
                     />
-                    <span>{recorder.isRecording ? '녹음 끝내기' : '녹음 시작'}</span>
+                    <span>{recorder.isRecording ? '녹음 끝내기' : busyStep ? '업로드 중...' : '녹음 시작'}</span>
                   </button>
                 )}
               </BotBubble>
@@ -253,6 +319,7 @@ export default function PronunciationPractice() {
             </BotBubble>
           )}
           {feedback && <FeedbackFlow feedback={feedback} />}
+          <div ref={chatBottomRef} />
         </div>
 
         {!unitDone && (
@@ -268,24 +335,7 @@ export default function PronunciationPractice() {
         )}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="flex justify-around items-center h-20">
-          <button
-            onClick={() => navigate('/main')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <Home size={28} />
-            <span className="text-xs font-medium mt-1">홈</span>
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <User size={28} />
-            <span className="text-xs font-medium mt-1">프로필</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav variant="study" active="home" />
     </div>
   );
 }

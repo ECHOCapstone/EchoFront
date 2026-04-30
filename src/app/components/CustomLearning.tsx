@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Home, LineChart, User, Volume2, CirclePlus } from 'lucide-react';
+import { CirclePlus, Volume2 } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
-import { ApiException, sessionsApi, type Session } from '../api';
+import BottomNav from './layout/BottomNav';
+import { sessionsApi, type Session } from '../api';
+import { paths } from '../lib/paths';
+import { notifyApiError } from '../lib/notify';
 
 export default function CustomLearning() {
   const navigate = useNavigate();
@@ -17,9 +20,7 @@ export default function CustomLearning() {
       .list()
       .then((data) => !cancelled && setSessions(data))
       .catch((err: unknown) => {
-        if (!cancelled) {
-          alert(err instanceof ApiException ? err.message : '세션을 불러오지 못했습니다.');
-        }
+        if (!cancelled) notifyApiError(err, '세션을 불러오지 못했습니다.');
       })
       .finally(() => !cancelled && setLoading(false));
     return () => {
@@ -32,9 +33,9 @@ export default function CustomLearning() {
     setCreating(true);
     try {
       const created = await sessionsApi.create('Untitled Session');
-      navigate(`/session-detail?sessionId=${created.id}`);
+      navigate(paths.sessionDetail(created.id));
     } catch (err) {
-      alert(err instanceof ApiException ? err.message : '세션 생성에 실패했습니다.');
+      notifyApiError(err, '세션 생성에 실패했습니다.');
     } finally {
       setCreating(false);
     }
@@ -58,7 +59,7 @@ export default function CustomLearning() {
           {sessions.map((s) => (
             <Button
               key={s.id}
-              onClick={() => navigate(`/session-detail?sessionId=${s.id}`)}
+              onClick={() => navigate(paths.sessionDetail(s.id))}
               variant="outline"
               className="w-full h-16 border-2 border-gray-300 hover:border-sky-500 hover:bg-sky-50 text-gray-900 text-lg font-medium rounded-2xl"
             >
@@ -76,31 +77,7 @@ export default function CustomLearning() {
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-        <div className="flex justify-around items-center h-20">
-          <button
-            onClick={() => navigate('/main')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <Home size={28} />
-            <span className="text-xs font-medium mt-1">홈</span>
-          </button>
-          <button
-            onClick={() => navigate('/stats')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <LineChart size={28} />
-            <span className="text-xs font-medium mt-1">통계</span>
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-sky-500 transition-colors"
-          >
-            <User size={28} />
-            <span className="text-xs font-medium mt-1">프로필</span>
-          </button>
-        </div>
-      </nav>
+      <BottomNav active="home" />
     </div>
   );
 }

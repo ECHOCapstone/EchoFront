@@ -70,6 +70,7 @@ export type RecordingResult = {
   canonical: string[];
   peakSoftmax: number[];
   stepScore: number | null;
+  guidanceKr: string | null;
   createdAt: string;
 };
 

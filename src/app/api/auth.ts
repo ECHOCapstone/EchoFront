@@ -20,6 +20,6 @@ export const authApi = {
     apiClient.post<{ available: boolean }>('/api/auth/check-username', { json: { value } }),
   checkEmail: (value: string) =>
     apiClient.post<{ available: boolean }>('/api/auth/check-email', { json: { value } }),
-  mockGoogleLogin: () => apiClient.get<TokenResponse>('/api/auth/oauth2/google/mock'),
+  demoGoogleLogin: () => apiClient.get<TokenResponse>('/api/auth/oauth2/google/demo'),
   me: () => apiClient.get<User>('/api/members/me'),
 };
