@@ -1,4 +1,5 @@
 export { authApi } from './auth';
+export { tracksApi } from './tracks';
 export { scriptsApi } from './scripts';
 export { sessionsApi } from './sessions';
 export { recordingsApi } from './recordings';

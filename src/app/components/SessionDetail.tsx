@@ -233,17 +233,15 @@ export default function SessionDetail() {
           <div ref={chatBottomRef} />
         </div>
 
-        {!feedback && (
-          <div className="mt-8">
-            <Button
-              onClick={handleEndLearning}
-              variant="outline"
-              className="w-full h-12 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-xl"
-            >
-              학습 끝내기
-            </Button>
-          </div>
-        )}
+        <div className="mt-8">
+          <Button
+            onClick={handleEndLearning}
+            variant="outline"
+            className="w-full h-12 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-xl"
+          >
+            학습 끝내기
+          </Button>
+        </div>
       </div>
 
       <BottomNav variant="study" active="home" />

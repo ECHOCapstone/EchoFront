@@ -7,12 +7,18 @@ import { Check, Mic, Sparkles, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { BotBubble, UserBubble } from './ChatBubble';
 import { feedbackApi, type Feedback } from '../api';
+import { useAuth } from '../auth/useAuth';
 import { useRecorder } from '../hooks/useRecorder';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 
 interface FeedbackFlowProps {
   feedback: Feedback;
+  // 재연습 단어 통과 + EXP 팝업 닫기 직후 호출되는 hook. 미지정 시 기본적으로 랭킹으로 이동한다.
+  // 트랙 진행 모드 등에서는 이 곳에 다음 챕터 진입 등 도메인별 후속 동작을 주입한다.
+  onComplete?: () => void;
+  // EXP 팝업의 1차 액션 라벨. 미지정 시 "확인" 으로 노출된다.
+  completeLabel?: string;
 }
 
 type Attempt = {
@@ -21,18 +27,21 @@ type Attempt = {
   guidanceKr: string;
 };
 
-export default function FeedbackFlow({ feedback }: FeedbackFlowProps) {
+export default function FeedbackFlow({ feedback, onComplete, completeLabel }: FeedbackFlowProps) {
   const navigate = useNavigate();
   const recorder = useRecorder();
+  const { refresh } = useAuth();
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [busy, setBusy] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [showExpPopup, setShowExpPopup] = useState(false);
 
   const practiceWord = feedback.practiceWord ?? 'rabbit';
-  const isCorrect = attempts.some((a) => a.correct);
 
   const handleStart = async () => {
-    if (busy || isCorrect) return;
+    // 정답 판정이 한 번 떨어졌더라도 사용자가 더 또렷하게 다시 발음해 보고 싶어 할 수 있어
+    // 녹음 자체는 항상 허용한다. busy 일 때만 가드한다.
+    if (busy) return;
     await recorder.start();
   };
 
@@ -61,10 +70,28 @@ export default function FeedbackFlow({ feedback }: FeedbackFlowProps) {
     }
   };
 
-  const handleCompleteAndGetExp = () => setShowExpPopup(true);
+  // EXP 보상 적용은 반드시 백엔드 단일 진입점(POST /api/feedback/{id}/complete) 을 거친다.
+  // 응답에 갱신된 사용자 정보가 들어있고, refresh() 한 번이면 StatusHeader 의 EXP/streak 가 즉시 반영된다.
+  const handleCompleteAndGetExp = async () => {
+    if (completing) return;
+    setCompleting(true);
+    try {
+      await feedbackApi.complete(feedback.id);
+      await refresh();
+      setShowExpPopup(true);
+    } catch (err) {
+      notifyApiError(err, '학습 완료 처리에 실패했습니다.');
+    } finally {
+      setCompleting(false);
+    }
+  };
 
   const handleClosePopup = () => {
     setShowExpPopup(false);
+    if (onComplete) {
+      onComplete();
+      return;
+    }
     navigate(paths.ranking);
   };
 
@@ -80,29 +107,9 @@ export default function FeedbackFlow({ feedback }: FeedbackFlowProps) {
       </BotBubble>
 
       <BotBubble>
-        <p className="text-gray-800 mb-4">
+        <p className="text-gray-800">
           아래 단어를 다시 한 번 연습해 볼까요? 녹음 버튼을 누르고 발음해 보세요.
         </p>
-        <div className="flex items-center justify-between gap-3 bg-white rounded-xl p-4 border-2 border-sky-100">
-          <p className="text-xl font-bold text-gray-900">{practiceWord}</p>
-          {!isCorrect && (
-            <button
-              onClick={recorder.isRecording ? handleStop : handleStart}
-              disabled={busy}
-              className={`flex items-center justify-center gap-1.5 px-3 h-11 bg-white border-2 ${
-                recorder.isRecording
-                  ? 'border-red-500 bg-red-50'
-                  : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50'
-              } text-gray-900 text-sm font-medium rounded-xl transition-colors whitespace-nowrap disabled:opacity-50`}
-            >
-              <Mic
-                size={18}
-                className={recorder.isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600'}
-              />
-              <span>{recorder.isRecording ? '녹음 끝내기' : '녹음 시작'}</span>
-            </button>
-          )}
-        </div>
       </BotBubble>
 
       {attempts.map((attempt) => (
@@ -134,16 +141,45 @@ export default function FeedbackFlow({ feedback }: FeedbackFlowProps) {
         </div>
       ))}
 
-      {isCorrect && (
-        <div className="pt-4">
-          <Button
-            onClick={handleCompleteAndGetExp}
-            className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white text-lg font-bold rounded-2xl"
+      {/* 재연습 단어 박스 + 녹음 버튼은 항상 attempts 의 가장 아래에 둔다.
+          첫 시도 화면에선 안내 메시지 바로 다음에, 시도 후엔 마지막 결과 다음에 자연스럽게 노출돼
+          "다시 발음하기" 액션이 헷갈리지 않는다. */}
+      <BotBubble>
+        <div className="flex items-center justify-between gap-3 bg-white rounded-xl p-4 border-2 border-sky-100">
+          <p className="text-xl font-bold text-gray-900">{practiceWord}</p>
+          <button
+            onClick={recorder.isRecording ? handleStop : handleStart}
+            disabled={busy}
+            className={`flex items-center justify-center gap-1.5 px-3 h-11 bg-white border-2 ${
+              recorder.isRecording
+                ? 'border-red-500 bg-red-50'
+                : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50'
+            } text-gray-900 text-sm font-medium rounded-xl transition-colors whitespace-nowrap disabled:opacity-50`}
           >
-            학습 완료하고 경험치 획득
-          </Button>
+            <Mic
+              size={18}
+              className={recorder.isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600'}
+            />
+            <span>
+              {recorder.isRecording
+                ? '녹음 끝내기'
+                : attempts.length > 0 ? '다시 발음하기' : '녹음 시작'}
+            </span>
+          </button>
         </div>
-      )}
+      </BotBubble>
+
+      {/* 학습 완료 버튼은 종합 피드백 도달 시점부터 항상 노출된다.
+          챕터의 모든 step 통과 = 학습 완료로 보고, 재연습 단어 정답 여부와 무관하게 EXP 보상을 허용한다. */}
+      <div className="pt-4">
+        <Button
+          onClick={handleCompleteAndGetExp}
+          disabled={completing}
+          className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white text-lg font-bold rounded-2xl disabled:opacity-60"
+        >
+          {completing ? '처리 중...' : '학습 완료하고 경험치 획득'}
+        </Button>
+      </div>
 
       {showExpPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
@@ -162,7 +198,7 @@ export default function FeedbackFlow({ feedback }: FeedbackFlowProps) {
               onClick={handleClosePopup}
               className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white text-lg font-bold rounded-2xl"
             >
-              확인
+              {completeLabel ?? '확인'}
             </Button>
           </div>
         </div>

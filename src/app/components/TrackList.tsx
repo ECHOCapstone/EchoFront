@@ -1,0 +1,89 @@
+// 학습 트랙 목록 화면. 백엔드 GET /api/tracks 응답을 카드로 노출하고,
+// 카드를 누르면 트랙 진입 화면(`/tracks/:trackId`) 으로 이동한다.
+
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { ArrowLeft, BookOpen, Flame } from 'lucide-react';
+import StatusHeader from './StatusHeader';
+import BottomNav from './layout/BottomNav';
+import { ApiException, tracksApi, type TrackSummary } from '../api';
+import { paths } from '../lib/paths';
+
+export default function TrackList() {
+  const navigate = useNavigate();
+  const [tracks, setTracks] = useState<TrackSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    tracksApi
+      .list()
+      .then((data) => {
+        if (cancelled) return;
+        setTracks(data);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof ApiException ? err.message : '학습 트랙을 불러오지 못했습니다.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <div className="flex-1 p-6 pb-24">
+        <StatusHeader />
+
+        <div className="flex justify-start mb-4">
+          <button
+            onClick={() => navigate(paths.main)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="뒤로가기"
+          >
+            <ArrowLeft size={24} className="text-gray-700" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 mb-8">
+          <Flame size={32} className="text-orange-500" />
+          <h1 className="text-3xl font-bold text-gray-900">학습 트랙</h1>
+        </div>
+
+        <div className="space-y-4">
+          {loading && <p className="text-gray-500">불러오는 중...</p>}
+          {!loading && error && <p className="text-red-500">{error}</p>}
+          {!loading && !error && tracks.length === 0 && (
+            <p className="text-gray-500">아직 등록된 학습 트랙이 없습니다.</p>
+          )}
+          {!loading && !error && tracks.map((track) => (
+            <button
+              key={track.id}
+              onClick={() => navigate(paths.trackOverview(track.id))}
+              className="w-full text-left bg-white border-2 border-gray-200 hover:border-sky-500 hover:bg-sky-50 rounded-2xl p-5 transition-colors"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0">
+                  <BookOpen size={24} className="text-sky-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">{track.title}</h2>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{track.description}</p>
+                  <p className="text-xs text-sky-600 font-medium">챕터 {track.chapterCount}개</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <BottomNav active="home" />
+    </div>
+  );
+}

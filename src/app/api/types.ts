@@ -125,3 +125,28 @@ export type Ranking = {
   myAccuracy: number;
   entries: { rank: number; nickname: string; accuracy: number; isMe: boolean }[];
 };
+
+// 학습 트랙 목록 화면에 노출되는 메타. chapterCount 로 분량을 가늠한다.
+export type TrackSummary = {
+  id: number;
+  title: string;
+  description: string;
+  displayOrder: number;
+  chapterCount: number;
+};
+
+// 트랙 진입 직전 한 번 받아오는 챕터 묶음. 챕터 학습 시 scriptId 그대로 /api/scripts/{id} 키가 된다.
+export type ChapterSummary = {
+  scriptId: number;
+  chapterOrder: number;
+  title: string;
+  difficulty: Difficulty;
+};
+
+export type TrackDetail = {
+  id: number;
+  title: string;
+  description: string;
+  displayOrder: number;
+  chapters: ChapterSummary[];
+};

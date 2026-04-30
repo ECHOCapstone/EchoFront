@@ -22,12 +22,12 @@ export default function Main() {
 
         <div className="space-y-4">
           <Button
-            onClick={() => navigate(paths.recommendedLearning)}
+            onClick={() => navigate(paths.tracks)}
             className="w-full h-48 bg-sky-500 hover:bg-sky-600 text-white shadow-lg rounded-3xl"
           >
             <div className="text-center">
-              <div className="text-3xl font-bold mb-2">오늘의 추천 학습</div>
-              <div className="text-sm opacity-90">매일 새로운 학습 내용을 추천해드립니다</div>
+              <div className="text-3xl font-bold mb-2">학습 트랙</div>
+              <div className="text-sm opacity-90">트랙을 골라 챕터별로 차근차근 발음을 익혀요</div>
             </div>
           </Button>
 
