@@ -22,4 +22,6 @@ export const authApi = {
     apiClient.post<{ available: boolean }>('/api/auth/check-email', { json: { value } }),
   demoGoogleLogin: () => apiClient.get<TokenResponse>('/api/auth/oauth2/google/demo'),
   me: () => apiClient.get<User>('/api/members/me'),
+  changeNickname: (nickname: string) =>
+    apiClient.patch<User>('/api/members/me/nickname', { json: { nickname } }),
 };

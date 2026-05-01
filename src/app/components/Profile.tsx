@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, FileText, Lock, LogOut, User, UserX } from 'lucide-react';
+import { Bell, FileText, Lock, LogOut, Pencil, User, UserX } from 'lucide-react';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
+import { authApi } from '../api';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
+import { notifyApiError } from '../lib/notify';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const [updatingNickname, setUpdatingNickname] = useState(false);
 
   const nickname = user?.nickname ?? '사용자';
   const email = user?.email ?? '';
@@ -17,6 +20,29 @@ export default function Profile() {
   const handlePasswordChange = () => alert('비밀번호 변경은 추후 제공될 예정입니다.');
   const handleNotificationToggle = () => setNotificationEnabled((v) => !v);
   const handleTermsAndPolicy = () => alert('약관 및 정책은 추후 제공될 예정입니다.');
+
+  // 닉네임 변경은 PATCH /api/members/me/nickname → AuthContext.refresh() 한 번이면
+  // StatusHeader 와 본 화면 모두 즉시 갱신된다.
+  const handleEditNickname = async () => {
+    if (updatingNickname) return;
+    const next = prompt('새 닉네임을 입력하세요:', nickname);
+    if (next === null) return;
+    const trimmed = next.trim();
+    if (!trimmed) {
+      alert('닉네임은 비워둘 수 없습니다.');
+      return;
+    }
+    if (trimmed === nickname) return;
+    setUpdatingNickname(true);
+    try {
+      await authApi.changeNickname(trimmed);
+      await refresh();
+    } catch (err) {
+      notifyApiError(err, '닉네임 변경에 실패했습니다.');
+    } finally {
+      setUpdatingNickname(false);
+    }
+  };
 
   const handleDeleteAccount = () => {
     if (confirm('정말로 회원탈퇴 하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
@@ -40,7 +66,17 @@ export default function Profile() {
           <div className="w-24 h-24 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <User size={48} className="text-sky-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{nickname}</h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{nickname}</h1>
+            <button
+              onClick={handleEditNickname}
+              disabled={updatingNickname}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+              aria-label="닉네임 변경"
+            >
+              <Pencil size={18} className="text-gray-600" />
+            </button>
+          </div>
         </div>
 
         <div className="mb-6 space-y-4">
@@ -48,9 +84,19 @@ export default function Profile() {
             <p className="text-sm text-gray-600 mb-1">이메일</p>
             <p className="text-gray-900 font-medium">{email}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm text-gray-600 mb-1">닉네임</p>
-            <p className="text-gray-900 font-medium">{nickname}</p>
+          <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">닉네임</p>
+              <p className="text-gray-900 font-medium">{nickname}</p>
+            </div>
+            <button
+              onClick={handleEditNickname}
+              disabled={updatingNickname}
+              className="flex items-center gap-1 px-3 h-9 bg-white border-2 border-gray-300 hover:border-sky-500 hover:bg-sky-50 text-gray-900 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+            >
+              <Pencil size={14} className="text-gray-600" />
+              <span>{updatingNickname ? '저장 중...' : '변경'}</span>
+            </button>
           </div>
         </div>
 
