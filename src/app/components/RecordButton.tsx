@@ -1,0 +1,66 @@
+// 모든 학습 흐름이 공유하는 녹음 버튼.
+//
+// 상태별 라벨/스타일을 한 곳에서 관리해 PronunciationPractice / SessionDetail / FeedbackFlow
+// 어디서든 동일 동작과 시각 언어를 보장한다.
+//   isRecording=false / busy=false → idleLabel  (예: "녹음 시작")
+//   isRecording=true                → recordingLabel (예: "녹음 끝내기")
+//   isRecording=false / busy=true  → busyLabel  (예: "업로드 중...")
+//
+// variant 는 형태 차이만 통제한다.
+//   'block'  : 전체 너비, 큰 버튼 (채팅 step prompt 안에 사용)
+//   'inline' : 폭 자동, 작은 버튼 (재연습 단어 박스 등 인라인 액션에 사용)
+
+import { Mic } from 'lucide-react';
+
+export type RecordButtonVariant = 'block' | 'inline';
+
+interface RecordButtonProps {
+  isRecording: boolean;
+  busy?: boolean;
+  onStart: () => void;
+  onStop: () => void;
+  idleLabel?: string;
+  recordingLabel?: string;
+  busyLabel?: string;
+  variant?: RecordButtonVariant;
+}
+
+const VARIANT_CLASS: Record<RecordButtonVariant, string> = {
+  block:
+    'w-full flex items-center justify-center gap-2 h-12 bg-white border-2 text-gray-900 font-medium rounded-xl transition-colors disabled:opacity-50',
+  inline:
+    'flex items-center justify-center gap-1.5 px-3 h-11 bg-white border-2 text-gray-900 text-sm font-medium rounded-xl transition-colors whitespace-nowrap disabled:opacity-50',
+};
+
+export default function RecordButton({
+  isRecording,
+  busy = false,
+  onStart,
+  onStop,
+  idleLabel = '녹음 시작',
+  recordingLabel = '녹음 끝내기',
+  busyLabel,
+  variant = 'block',
+}: RecordButtonProps) {
+  const stateClass = isRecording
+    ? 'border-red-500 bg-red-50'
+    : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50';
+  const iconSize = variant === 'block' ? 20 : 18;
+  const label = isRecording
+    ? recordingLabel
+    : busy && busyLabel ? busyLabel : idleLabel;
+
+  return (
+    <button
+      onClick={isRecording ? onStop : onStart}
+      disabled={busy}
+      className={`${VARIANT_CLASS[variant]} ${stateClass}`}
+    >
+      <Mic
+        size={iconSize}
+        className={isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600'}
+      />
+      <span>{label}</span>
+    </button>
+  );
+}

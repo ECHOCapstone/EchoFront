@@ -3,9 +3,10 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Check, Mic, Sparkles, Zap } from 'lucide-react';
+import { Check, Sparkles, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { BotBubble, UserBubble } from './ChatBubble';
+import RecordButton from './RecordButton';
 import { feedbackApi, type Feedback } from '../api';
 import { useAuth } from '../auth/useAuth';
 import { useRecorder } from '../hooks/useRecorder';
@@ -147,25 +148,14 @@ export default function FeedbackFlow({ feedback, onComplete, completeLabel }: Fe
       <BotBubble>
         <div className="flex items-center justify-between gap-3 bg-white rounded-xl p-4 border-2 border-sky-100">
           <p className="text-xl font-bold text-gray-900">{practiceWord}</p>
-          <button
-            onClick={recorder.isRecording ? handleStop : handleStart}
-            disabled={busy}
-            className={`flex items-center justify-center gap-1.5 px-3 h-11 bg-white border-2 ${
-              recorder.isRecording
-                ? 'border-red-500 bg-red-50'
-                : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50'
-            } text-gray-900 text-sm font-medium rounded-xl transition-colors whitespace-nowrap disabled:opacity-50`}
-          >
-            <Mic
-              size={18}
-              className={recorder.isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600'}
-            />
-            <span>
-              {recorder.isRecording
-                ? '녹음 끝내기'
-                : attempts.length > 0 ? '다시 발음하기' : '녹음 시작'}
-            </span>
-          </button>
+          <RecordButton
+            isRecording={recorder.isRecording}
+            busy={busy}
+            onStart={handleStart}
+            onStop={handleStop}
+            idleLabel={attempts.length > 0 ? '다시 발음하기' : '녹음 시작'}
+            variant="inline"
+          />
         </div>
       </BotBubble>
 

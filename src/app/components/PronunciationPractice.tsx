@@ -14,12 +14,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeft, Mic, RotateCcw, Volume2 } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Volume2 } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { BotBubble, UserBubble } from './ChatBubble';
 import FeedbackFlow from './FeedbackFlow';
+import RecordButton from './RecordButton';
 import {
   feedbackApi,
   recordingsApi,
@@ -402,21 +403,13 @@ export default function PronunciationPractice() {
                   )}
                 </div>
                 {isPrompt && (
-                  <button
-                    onClick={recorder.isRecording ? handleStopRecording : handleStartRecording}
-                    disabled={busyStep}
-                    className={`w-full flex items-center justify-center gap-2 h-12 bg-white border-2 ${
-                      recorder.isRecording
-                        ? 'border-red-500 bg-red-50'
-                        : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50'
-                    } text-gray-900 font-medium rounded-xl transition-colors disabled:opacity-50`}
-                  >
-                    <Mic
-                      size={20}
-                      className={recorder.isRecording ? 'text-red-500 animate-pulse' : 'text-gray-600'}
-                    />
-                    <span>{recorder.isRecording ? '녹음 끝내기' : busyStep ? '업로드 중...' : '녹음 시작'}</span>
-                  </button>
+                  <RecordButton
+                    isRecording={recorder.isRecording}
+                    busy={busyStep}
+                    onStart={handleStartRecording}
+                    onStop={handleStopRecording}
+                    busyLabel="업로드 중..."
+                  />
                 )}
               </BotBubble>
             );
