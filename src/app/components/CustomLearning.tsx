@@ -32,11 +32,14 @@ export default function CustomLearning() {
     };
   }, []);
 
+  // 새 세션의 기본 제목. 사용자는 진입 후 SessionDetail 의 제목 편집 버튼으로 즉시 바꿀 수 있다.
+  const DEFAULT_NEW_SESSION_TITLE = '새 학습 세션';
+
   const handleAddSession = async () => {
     if (creating) return;
     setCreating(true);
     try {
-      const created = await sessionsApi.create('Untitled Session');
+      const created = await sessionsApi.create(DEFAULT_NEW_SESSION_TITLE);
       navigate(paths.sessionDetail(created.id));
     } catch (err) {
       notifyApiError(err, '세션 생성에 실패했습니다.');
