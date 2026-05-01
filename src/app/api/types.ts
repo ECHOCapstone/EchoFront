@@ -64,6 +64,7 @@ export type Session = {
   id: number;
   title: string;
   scriptText: string;
+  favorite: boolean;
   sentences: SessionSentence[];
   createdAt: string;
   updatedAt: string;

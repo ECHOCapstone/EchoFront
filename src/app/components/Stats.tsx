@@ -196,12 +196,13 @@ export default function Stats() {
                       }`}
                     />
                   </div>
+                  {/* 미보유 배지의 이름도 회색으로 노출하여 다음 도전 목표가 분명하게 보이도록 한다. */}
                   <p
-                    className={`text-xs font-medium text-center ${
+                    className={`text-xs font-medium text-center break-keep ${
                       badge.achieved ? 'text-gray-900' : 'text-gray-400'
                     }`}
                   >
-                    {badge.achieved ? badge.name : '???'}
+                    {badge.name}
                   </p>
                 </div>
               ))}
