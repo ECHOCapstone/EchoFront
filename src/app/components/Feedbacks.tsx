@@ -65,7 +65,8 @@ export default function Feedbacks() {
           {!loading && !error && !feedback && (
             <p className="text-gray-500">아직 피드백이 없습니다. 학습을 먼저 진행해 보세요.</p>
           )}
-          {feedback && <FeedbackFlow feedback={feedback} />}
+          {/* 이미 완료된 피드백을 다시 보는 화면이라 EXP 가산 버튼은 숨긴다. */}
+          {feedback && <FeedbackFlow feedback={feedback} allowCompletion={false} />}
         </div>
       </div>
 
