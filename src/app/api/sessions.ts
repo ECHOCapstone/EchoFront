@@ -7,4 +7,5 @@ export const sessionsApi = {
   get: (id: number) => apiClient.get<Session>(`/api/sessions/${id}`),
   update: (id: number, patch: { title?: string; scriptText?: string }) =>
     apiClient.patch<Session>(`/api/sessions/${id}`, { json: patch }),
+  delete: (id: number) => apiClient.delete<void>(`/api/sessions/${id}`),
 };

@@ -52,10 +52,19 @@ export type ScriptDetail = {
   steps: LearningStep[];
 };
 
+// 사용자 맞춤 세션의 학습 단위 한 문장. SentenceSplitter 결과를 그대로 노출하며,
+// id 를 녹음 업로드(sentenceId) 키로 사용한다.
+export type SessionSentence = {
+  id: number;
+  sentenceIndex: number;
+  text: string;
+};
+
 export type Session = {
   id: number;
   title: string;
   scriptText: string;
+  sentences: SessionSentence[];
   createdAt: string;
   updatedAt: string;
 };
@@ -65,6 +74,7 @@ export type RecordingResult = {
   scriptId: number | null;
   sessionId: number | null;
   stepId: number | null;
+  sessionSentenceId: number | null;
   durationSec: number | null;
   perceived: string[];
   canonical: string[];
