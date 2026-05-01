@@ -20,6 +20,9 @@ interface FeedbackFlowProps {
   onComplete?: () => void;
   // EXP 팝업의 1차 액션 라벨. 미지정 시 "확인" 으로 노출된다.
   completeLabel?: string;
+  // false 면 "학습 완료하고 경험치 획득" 버튼을 노출하지 않는다. 이미 완료한 피드백을
+  // 다시 열어보는 화면(Feedbacks 목록 진입)에서 EXP 가 중복 가산되지 않도록 차단한다.
+  allowCompletion?: boolean;
 }
 
 type Attempt = {
@@ -28,16 +31,26 @@ type Attempt = {
   guidanceKr: string;
 };
 
-export default function FeedbackFlow({ feedback, onComplete, completeLabel }: FeedbackFlowProps) {
+export default function FeedbackFlow({
+  feedback,
+  onComplete,
+  completeLabel,
+  allowCompletion = true,
+}: FeedbackFlowProps) {
   const navigate = useNavigate();
   const recorder = useRecorder();
-  const { refresh } = useAuth();
+  const { user, refresh } = useAuth();
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [busy, setBusy] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [showExpPopup, setShowExpPopup] = useState(false);
+  // complete API 응답으로 갱신된 사용자의 exp 와 호출 직전 exp 의 차이.
+  // 백엔드 app.reward.completion-exp 가 SSOT 이므로 프론트는 이 값을 그대로 노출한다.
+  const [expGained, setExpGained] = useState<number | null>(null);
 
-  const practiceWord = feedback.practiceWord ?? 'rabbit';
+  // null 이면 백엔드가 권장 단어를 결정하지 못한 케이스이므로 박스 자체를 노출하지 않는다.
+  // 매직 fallback ('rabbit') 으로 채우면 백엔드 SSOT 가 깨지므로 의도적으로 빈 값 그대로 둔다.
+  const practiceWord = feedback.practiceWord ?? null;
 
   const handleStart = async () => {
     // 정답 판정이 한 번 떨어졌더라도 사용자가 더 또렷하게 다시 발음해 보고 싶어 할 수 있어
@@ -72,12 +85,16 @@ export default function FeedbackFlow({ feedback, onComplete, completeLabel }: Fe
   };
 
   // EXP 보상 적용은 반드시 백엔드 단일 진입점(POST /api/feedback/{id}/complete) 을 거친다.
-  // 응답에 갱신된 사용자 정보가 들어있고, refresh() 한 번이면 StatusHeader 의 EXP/streak 가 즉시 반영된다.
+  // 응답에 갱신된 사용자 정보가 들어있고, 호출 전 exp 와 비교해 실제 가산량을 산출한다.
   const handleCompleteAndGetExp = async () => {
     if (completing) return;
     setCompleting(true);
+    const previousExp = user?.exp ?? 0;
     try {
-      await feedbackApi.complete(feedback.id);
+      const updated = await feedbackApi.complete(feedback.id);
+      const gained = updated.exp - previousExp;
+      // 음수가 나올 일은 없지만 안전망으로 0 으로 끌어올려 둔다.
+      setExpGained(gained > 0 ? gained : 0);
       await refresh();
       setShowExpPopup(true);
     } catch (err) {
@@ -107,11 +124,13 @@ export default function FeedbackFlow({ feedback, onComplete, completeLabel }: Fe
         )}
       </BotBubble>
 
-      <BotBubble>
-        <p className="text-gray-800">
-          아래 단어를 다시 한 번 연습해 볼까요? 녹음 버튼을 누르고 발음해 보세요.
-        </p>
-      </BotBubble>
+      {practiceWord && (
+        <BotBubble>
+          <p className="text-gray-800">
+            아래 단어를 다시 한 번 연습해 볼까요? 녹음 버튼을 누르고 발음해 보세요.
+          </p>
+        </BotBubble>
+      )}
 
       {attempts.map((attempt) => (
         <div key={attempt.key} className="space-y-4">
@@ -142,34 +161,39 @@ export default function FeedbackFlow({ feedback, onComplete, completeLabel }: Fe
         </div>
       ))}
 
-      {/* 재연습 단어 박스 + 녹음 버튼은 항상 attempts 의 가장 아래에 둔다.
+      {/* 재연습 단어 박스. 백엔드가 권장 단어를 결정한 경우에만 노출한다.
           첫 시도 화면에선 안내 메시지 바로 다음에, 시도 후엔 마지막 결과 다음에 자연스럽게 노출돼
           "다시 발음하기" 액션이 헷갈리지 않는다. */}
-      <BotBubble>
-        <div className="flex items-center justify-between gap-3 bg-white rounded-xl p-4 border-2 border-sky-100">
-          <p className="text-xl font-bold text-gray-900">{practiceWord}</p>
-          <RecordButton
-            isRecording={recorder.isRecording}
-            busy={busy}
-            onStart={handleStart}
-            onStop={handleStop}
-            idleLabel={attempts.length > 0 ? '다시 발음하기' : '녹음 시작'}
-            variant="inline"
-          />
-        </div>
-      </BotBubble>
+      {practiceWord && (
+        <BotBubble>
+          <div className="flex items-center justify-between gap-3 bg-white rounded-xl p-4 border-2 border-sky-100">
+            <p className="text-xl font-bold text-gray-900">{practiceWord}</p>
+            <RecordButton
+              isRecording={recorder.isRecording}
+              busy={busy}
+              onStart={handleStart}
+              onStop={handleStop}
+              idleLabel={attempts.length > 0 ? '다시 발음하기' : '녹음 시작'}
+              variant="inline"
+            />
+          </div>
+        </BotBubble>
+      )}
 
-      {/* 학습 완료 버튼은 종합 피드백 도달 시점부터 항상 노출된다.
-          챕터의 모든 step 통과 = 학습 완료로 보고, 재연습 단어 정답 여부와 무관하게 EXP 보상을 허용한다. */}
-      <div className="pt-4">
-        <Button
-          onClick={handleCompleteAndGetExp}
-          disabled={completing}
-          className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white text-lg font-bold rounded-2xl disabled:opacity-60"
-        >
-          {completing ? '처리 중...' : '학습 완료하고 경험치 획득'}
-        </Button>
-      </div>
+      {/* "학습 완료하고 경험치 획득" 버튼은 진행 중인 학습에서만 노출한다.
+          이미 완료한 피드백을 다시 보는 Feedbacks 화면에선 allowCompletion=false 로 숨겨
+          같은 피드백으로 EXP 가 중복 가산되는 것을 막는다. */}
+      {allowCompletion && (
+        <div className="pt-4">
+          <Button
+            onClick={handleCompleteAndGetExp}
+            disabled={completing}
+            className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white text-lg font-bold rounded-2xl disabled:opacity-60"
+          >
+            {completing ? '처리 중...' : '학습 완료하고 경험치 획득'}
+          </Button>
+        </div>
+      )}
 
       {showExpPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
@@ -180,7 +204,9 @@ export default function FeedbackFlow({ feedback, onComplete, completeLabel }: Fe
             <div className="text-center mb-6">
               <div className="flex items-center justify-center gap-3 mb-4">
                 <Zap size={40} className="text-yellow-500 fill-yellow-500" />
-                <span className="text-4xl font-bold text-gray-900">EXP +1000</span>
+                <span className="text-4xl font-bold text-gray-900">
+                  EXP +{expGained ?? 0}
+                </span>
               </div>
               <p className="text-lg text-gray-600">학습을 완료했습니다!</p>
             </div>
