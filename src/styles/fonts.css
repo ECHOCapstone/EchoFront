@@ -1,0 +1,17 @@
+/* 한국어 + 영문 매칭이 깔끔한 Pretendard 를 기본 폰트로. CDN 의 가변 dynamic-subset 을 가져오면
+   글자 단위로 필요한 글리프만 받아 초기 로딩이 가볍다. */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css');
+
+:root {
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    'system-ui', Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo',
+    'Noto Sans KR', sans-serif;
+}
+
+html,
+body,
+#root {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
