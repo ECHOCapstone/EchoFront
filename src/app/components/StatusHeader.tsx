@@ -20,7 +20,7 @@ export default function StatusHeader({ streak, exp }: StatusHeaderProps) {
   const goStats = () => navigate(paths.stats);
 
   return (
-    <div className="flex items-center justify-end gap-2 mb-4">
+    <div className="flex items-center justify-end gap-2 mb-4 flex-wrap">
       <button
         onClick={goStats}
         className="flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 rounded-full transition-colors"

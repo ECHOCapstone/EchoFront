@@ -54,6 +54,11 @@ export default function FeedbackFlow({
   // 매직 fallback ('rabbit') 으로 채우면 백엔드 SSOT 가 깨지므로 의도적으로 빈 값 그대로 둔다.
   const practiceWord = feedback.practiceWord ?? null;
   const weakPhonemeLabel = feedback.weakPhoneme?.toUpperCase();
+  // 점수 구간별 강조 색. 낮은 점수에 무조건 sky 색을 주면 "잘했다" 라는 신호로 오해된다.
+  const accuracyColor =
+    feedback.accuracy >= 80 ? 'text-sky-600'
+    : feedback.accuracy >= 60 ? 'text-amber-500'
+    : 'text-red-500';
 
   const handleStart = async () => {
     // 정답 판정이 한 번 떨어졌더라도 사용자가 더 또렷하게 다시 발음해 보고 싶어 할 수 있어
@@ -120,7 +125,7 @@ export default function FeedbackFlow({
     <>
       <BotBubble>
         <p className="text-gray-800 leading-relaxed mb-3">
-          이번 학습 정확도는 <span className="font-bold text-sky-600">{feedback.accuracy.toFixed(1)}점</span>이에요.
+          이번 학습 정확도는 <span className={`font-bold ${accuracyColor}`}>{feedback.accuracy.toFixed(1)}점</span>이에요.
         </p>
         {feedback.guidanceKr && (
           <p className="text-gray-700 leading-relaxed">{feedback.guidanceKr}</p>

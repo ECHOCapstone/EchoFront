@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Award, Lock } from 'lucide-react';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { ApiException, statsApi, type Stats as StatsData } from '../api';
@@ -130,7 +130,7 @@ export default function Stats() {
                 return (
                   <div
                     key={day}
-                    className={`aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-colors ${getAttendanceColor(
+                    className={`aspect-square rounded-md flex items-center justify-center text-sm font-medium transition-colors ${getAttendanceColor(
                       streakDays
                     )} ${isToday ? 'ring-1 ring-sky-500 ring-offset-1' : ''} ${textColor}`}
                   >
@@ -196,11 +196,9 @@ export default function Stats() {
                         : 'bg-gray-100'
                     }`}
                   >
-                    <div
-                      className={`w-16 h-16 rounded-full ${
-                        badge.achieved ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                    />
+                    {badge.achieved
+                      ? <Award size={32} className="text-sky-600" />
+                      : <Lock size={26} className="text-gray-400" />}
                   </div>
                   {/* 미보유 배지의 이름도 회색으로 노출하여 다음 도전 목표가 분명하게 보이도록 한다. */}
                   <p
