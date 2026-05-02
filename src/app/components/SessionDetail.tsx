@@ -27,6 +27,7 @@ import {
   type PhonemeError,
   type Session,
   type SessionSentence,
+  type WrongWord,
 } from '../api';
 import { useRecorder } from '../hooks/useRecorder';
 import { useTtsPlayer } from '../hooks/useTtsPlayer';
@@ -38,7 +39,7 @@ type AlignmentSnapshot = {
   perceived: string[];
   canonical: string[];
   errors: PhonemeError[];
-  wrongWords: string[];
+  wrongWords: WrongWord[];
 };
 
 type ChatItem =
