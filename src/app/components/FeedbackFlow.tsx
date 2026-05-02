@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Check, Sparkles, Zap } from 'lucide-react';
+import { Check, Sparkles, Trophy, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { BotBubble, UserBubble } from './ChatBubble';
 import RecordButton from './RecordButton';
@@ -220,7 +220,9 @@ export default function FeedbackFlow({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
             <div className="w-full h-48 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl flex items-center justify-center mb-6">
-              <div className="w-32 h-32 bg-white rounded-full"></div>
+              <div className="w-32 h-32 rounded-full bg-white shadow-inner flex items-center justify-center">
+                <Trophy size={64} className="text-yellow-500 fill-yellow-300" />
+              </div>
             </div>
             <div className="text-center mb-6">
               <div className="flex items-center justify-center gap-3 mb-4">
