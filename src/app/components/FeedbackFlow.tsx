@@ -44,6 +44,8 @@ export default function FeedbackFlow({
   const [busy, setBusy] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [showExpPopup, setShowExpPopup] = useState(false);
+  // 사용자가 명시적으로 "약점 음소 한 번 더 연습" 을 시작했는지. true 가 되어야만 단어 박스가 보인다.
+  const [retryStarted, setRetryStarted] = useState(false);
   // complete API 응답으로 갱신된 사용자의 exp 와 호출 직전 exp 의 차이.
   // 백엔드 app.reward.completion-exp 가 SSOT 이므로 프론트는 이 값을 그대로 노출한다.
   const [expGained, setExpGained] = useState<number | null>(null);
@@ -51,6 +53,7 @@ export default function FeedbackFlow({
   // null 이면 백엔드가 권장 단어를 결정하지 못한 케이스이므로 박스 자체를 노출하지 않는다.
   // 매직 fallback ('rabbit') 으로 채우면 백엔드 SSOT 가 깨지므로 의도적으로 빈 값 그대로 둔다.
   const practiceWord = feedback.practiceWord ?? null;
+  const weakPhonemeLabel = feedback.weakPhoneme?.toUpperCase();
 
   const handleStart = async () => {
     // 정답 판정이 한 번 떨어졌더라도 사용자가 더 또렷하게 다시 발음해 보고 싶어 할 수 있어
@@ -124,10 +127,30 @@ export default function FeedbackFlow({
         )}
       </BotBubble>
 
-      {practiceWord && (
+      {/* D 옵션: 사용자가 직접 누를 때만 약점 음소 단어 박스를 띄운다.
+          누르기 전에는 짧은 안내 + 시작 버튼만, 누른 다음에는 안내가 단어 박스 안내문으로 바뀐다. */}
+      {practiceWord && !retryStarted && (
+        <BotBubble>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-gray-800">
+              {weakPhonemeLabel
+                ? <>약점 음소 <span className="font-bold text-sky-600">{weakPhonemeLabel}</span> 를 한 번 더 연습해 볼까요?</>
+                : '추천 단어로 한 번 더 연습해 볼까요?'}
+            </p>
+            <button
+              onClick={() => setRetryStarted(true)}
+              className="flex items-center justify-center px-4 h-11 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-xl whitespace-nowrap"
+            >
+              한 번 더 연습하기
+            </button>
+          </div>
+        </BotBubble>
+      )}
+
+      {practiceWord && retryStarted && (
         <BotBubble>
           <p className="text-gray-800">
-            아래 단어를 다시 한 번 연습해 볼까요? 녹음 버튼을 누르고 발음해 보세요.
+            아래 단어를 발음해 보세요. 녹음 버튼을 누르고 또렷하게 말해 보세요.
           </p>
         </BotBubble>
       )}
@@ -161,10 +184,8 @@ export default function FeedbackFlow({
         </div>
       ))}
 
-      {/* 재연습 단어 박스. 백엔드가 권장 단어를 결정한 경우에만 노출한다.
-          첫 시도 화면에선 안내 메시지 바로 다음에, 시도 후엔 마지막 결과 다음에 자연스럽게 노출돼
-          "다시 발음하기" 액션이 헷갈리지 않는다. */}
-      {practiceWord && (
+      {/* 단어 박스는 사용자가 "한 번 더 연습하기" 를 눌렀을 때만 노출한다. */}
+      {practiceWord && retryStarted && (
         <BotBubble>
           <div className="flex items-center justify-between gap-3 bg-white rounded-xl p-4 border-2 border-sky-100">
             <p className="text-xl font-bold text-gray-900">{practiceWord}</p>
