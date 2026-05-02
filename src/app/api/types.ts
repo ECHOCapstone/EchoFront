@@ -70,6 +70,12 @@ export type Session = {
   updatedAt: string;
 };
 
+// LLM 이 짚어 준 잘못 발음된 단어와 그 위치. index 는 targetText 의 영어 단어 중 0-based 위치.
+export type WrongWord = {
+  word: string;
+  index: number;
+};
+
 export type RecordingResult = {
   id: number;
   scriptId: number | null;
@@ -83,8 +89,7 @@ export type RecordingResult = {
   stepScore: number | null;
   guidanceKr: string | null;
   errors: PhonemeError[];
-  // LLM 이 잘못 발음했다고 판정한 영어 단어 (소문자). LLM 비활성화면 빈 배열.
-  wrongWords: string[];
+  wrongWords: WrongWord[];
   createdAt: string;
 };
 

@@ -1,19 +1,20 @@
 // 정답 음소 시퀀스와 모델이 인식한 음소 시퀀스를 두 줄로 보여주고, 틀린 자리를 색으로 표시한다.
-// 그 위로 targetText 의 단어들도 wrongWords 와 매칭해 빨강 처리한다.
+// 그 위로 targetText 의 단어들도 wrongWords 의 (word + index) 와 매칭해 빨강 처리한다.
 //
 // 색 규칙
-//   - 단어 줄: targetText 를 공백으로 쪼갠 토큰 중, 소문자/구두점 제거 후 wrongWords 에 들어 있으면 빨강.
+//   - 단어 줄: targetText 의 영어 단어를 0-based 로 셀 때 그 인덱스가 wrongWords 의 index 와
+//     일치하면 빨강. word 도 같이 비교해 LLM 이 인덱스를 헷갈렸을 때 잘못 색칠하지 않는다.
 //   - 정답 음소 줄: substitution / deletion 인 canonicalIndex = 빨강.
-//   - 인식 음소 줄: substitution / insertion 으로 등장한 perceived 토큰 = 빨강 (중복 카운트 처리).
+//   - 당신 음소 줄: substitution / insertion 으로 등장한 perceived 토큰 = 빨강 (중복 카운트 처리).
 
-import type { PhonemeError } from '../api';
+import type { PhonemeError, WrongWord } from '../api';
 
 interface PhonemeAlignmentProps {
   targetText?: string | null;
   canonical: string[];
   perceived: string[];
   errors: PhonemeError[];
-  wrongWords: string[];
+  wrongWords: WrongWord[];
 }
 
 export default function PhonemeAlignment({
@@ -51,28 +52,38 @@ export default function PhonemeAlignment({
     return false;
   });
 
-  const wrongWordSet = new Set(wrongWords.map((w) => w.toLowerCase()));
+  // index → expected word. 같은 인덱스가 중복으로 와도 마지막 값이 이긴다.
+  const wrongByIndex = new Map<number, string>();
+  for (const w of wrongWords) {
+    if (w && typeof w.index === 'number' && w.index >= 0) {
+      wrongByIndex.set(w.index, (w.word ?? '').toLowerCase());
+    }
+  }
 
   return (
     <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 space-y-2">
       {targetText && (
         <p className="text-base font-bold leading-relaxed">
-          {tokenizeText(targetText).map((part, i) =>
-            part.kind === 'word' ? (
+          {tokenizeText(targetText).map((part, i) => {
+            if (part.kind !== 'word') {
+              return <span key={i} className="text-gray-500">{part.text}</span>;
+            }
+            const expected = wrongByIndex.get(part.wordIndex);
+            // word 가 비어 있으면 인덱스만 일치해도 빨강. word 가 적혔으면 정확히 일치할 때만.
+            const isWrong = expected !== undefined && (expected === '' || expected === part.normalized);
+            return (
               <span
                 key={i}
                 className={
-                  wrongWordSet.has(part.normalized)
+                  isWrong
                     ? 'text-red-600 underline decoration-red-400 decoration-2 underline-offset-2'
                     : 'text-gray-900'
                 }
               >
                 {part.text}
               </span>
-            ) : (
-              <span key={i} className="text-gray-500">{part.text}</span>
-            )
-          )}
+            );
+          })}
         </p>
       )}
       <Row label="정답" tokens={canonical} highlight={(_, i) => wrongCanonicalIdx.has(i)} />
@@ -81,19 +92,22 @@ export default function PhonemeAlignment({
   );
 }
 
-// 공백·구두점 경계로 텍스트를 단어 / 비단어 토큰으로 쪼갠다.
-// normalized 는 소문자 + 알파벳·축약 부호만 남긴 형태로 wrongWords 와 비교에 쓴다.
-type TextPart = { kind: 'word' | 'gap'; text: string; normalized: string };
+// 텍스트를 단어 / 비단어 토큰으로 쪼개고, 단어에는 0-based wordIndex 를 매긴다.
+type TextPart =
+  | { kind: 'word'; text: string; normalized: string; wordIndex: number }
+  | { kind: 'gap'; text: string };
 
 function tokenizeText(text: string): TextPart[] {
   const parts: TextPart[] = [];
   const regex = /([A-Za-z][A-Za-z']*)|([^A-Za-z]+)/g;
   let match: RegExpExecArray | null;
+  let wordIndex = 0;
   while ((match = regex.exec(text)) !== null) {
     if (match[1]) {
-      parts.push({ kind: 'word', text: match[1], normalized: match[1].toLowerCase() });
+      parts.push({ kind: 'word', text: match[1], normalized: match[1].toLowerCase(), wordIndex });
+      wordIndex += 1;
     } else if (match[2]) {
-      parts.push({ kind: 'gap', text: match[2], normalized: '' });
+      parts.push({ kind: 'gap', text: match[2] });
     }
   }
   return parts;
