@@ -40,7 +40,6 @@ export type LearningStep = {
   kind: StepKind;
   prompt: string;
   targetText: string | null;
-  canonicalPhonemes: string[];
 };
 
 export type ScriptDetail = {
