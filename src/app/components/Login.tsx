@@ -100,10 +100,10 @@ export default function Login() {
             </div>
           </div>
 
-          {/* 로그인 버튼 */}
+          {/* 로그인 버튼 — 두 입력이 모두 채워졌을 때만 활성화. 빈 입력으로 굳이 백엔드를 거쳐 401 받지 않게 한다. */}
           <Button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !formData.id.trim() || !formData.password}
             className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium disabled:opacity-60"
           >
             {submitting ? '로그인 중...' : '로그인'}

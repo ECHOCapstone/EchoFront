@@ -55,6 +55,11 @@ export default function Stats() {
     });
   };
 
+  // 미래 월로는 더 가지 못하게 한다 — 빈 캘린더만 보여주는 게 의미가 없다.
+  const isFutureBlocked =
+    calendar.year > today.getFullYear()
+    || (calendar.year === today.getFullYear() && calendar.month >= today.getMonth() + 1);
+
   const days = stats?.attendance.days ?? {};
 
   const weeklyErrors = stats?.weeklyErrors ?? [];
@@ -94,7 +99,8 @@ export default function Stats() {
             </h2>
             <button
               onClick={() => shiftMonth(1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              disabled={isFutureBlocked}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               aria-label="다음 달"
             >
               <ChevronRight size={22} className="text-gray-700" />
