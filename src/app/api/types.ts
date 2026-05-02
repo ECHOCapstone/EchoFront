@@ -82,6 +82,9 @@ export type RecordingResult = {
   peakSoftmax: number[];
   stepScore: number | null;
   guidanceKr: string | null;
+  errors: PhonemeError[];
+  // LLM 이 잘못 발음했다고 판정한 영어 단어 (소문자). LLM 비활성화면 빈 배열.
+  wrongWords: string[];
   createdAt: string;
 };
 

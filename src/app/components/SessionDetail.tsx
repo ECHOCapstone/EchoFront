@@ -17,12 +17,14 @@ import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { BotBubble, UserBubble } from './ChatBubble';
 import FeedbackFlow from './FeedbackFlow';
+import PhonemeAlignment from './PhonemeAlignment';
 import RecordButton from './RecordButton';
 import {
   feedbackApi,
   recordingsApi,
   sessionsApi,
   type Feedback,
+  type PhonemeError,
   type Session,
   type SessionSentence,
 } from '../api';
@@ -30,6 +32,14 @@ import { useRecorder } from '../hooks/useRecorder';
 import { useTtsPlayer } from '../hooks/useTtsPlayer';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
+
+type AlignmentSnapshot = {
+  targetText: string | null;
+  perceived: string[];
+  canonical: string[];
+  errors: PhonemeError[];
+  wrongWords: string[];
+};
 
 type ChatItem =
   | { kind: 'bot-sentence'; sentence: SessionSentence }
@@ -46,6 +56,7 @@ type ChatItem =
       sentenceId: number;
       guidanceKr: string;
       score: number | null;
+      alignment: AlignmentSnapshot;
     };
 
 export default function SessionDetail() {
@@ -214,6 +225,13 @@ export default function SessionDetail() {
           sentenceId: currentSentence.id,
           guidanceKr: uploaded.guidanceKr ?? '',
           score: uploaded.stepScore ?? null,
+          alignment: {
+            targetText: currentSentence.text,
+            perceived: uploaded.perceived,
+            canonical: uploaded.canonical,
+            errors: uploaded.errors,
+            wrongWords: uploaded.wrongWords,
+          },
         },
       ]);
     } catch (err) {
@@ -375,6 +393,15 @@ export default function SessionDetail() {
                       <p className="text-base text-gray-900 leading-relaxed mb-3">
                         {item.guidanceKr || '발음 결과를 확인했어요.'}
                       </p>
+                      <div className="mb-3">
+                        <PhonemeAlignment
+                          targetText={item.alignment.targetText}
+                          canonical={item.alignment.canonical}
+                          perceived={item.alignment.perceived}
+                          errors={item.alignment.errors}
+                          wrongWords={item.alignment.wrongWords}
+                        />
+                      </div>
                       {isActive && (
                         <div className="flex gap-2">
                           <button

@@ -20,6 +20,7 @@ import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { BotBubble, UserBubble } from './ChatBubble';
 import FeedbackFlow from './FeedbackFlow';
+import PhonemeAlignment from './PhonemeAlignment';
 import RecordButton from './RecordButton';
 import {
   feedbackApi,
@@ -28,6 +29,7 @@ import {
   tracksApi,
   type Feedback,
   type LearningStep,
+  type PhonemeError,
   type ScriptDetail,
   type TrackDetail,
 } from '../api';
@@ -36,10 +38,25 @@ import { useTtsPlayer } from '../hooks/useTtsPlayer';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 
+type AlignmentSnapshot = {
+  targetText: string | null;
+  perceived: string[];
+  canonical: string[];
+  errors: PhonemeError[];
+  wrongWords: string[];
+};
+
 type ChatItem =
   | { kind: 'bot-step'; step: LearningStep }
   | { kind: 'user-record'; key: string; recordingId: number; stepId: number; score: number | null }
-  | { kind: 'bot-feedback'; key: string; stepId: number; guidanceKr: string; score: number | null };
+  | {
+      kind: 'bot-feedback';
+      key: string;
+      stepId: number;
+      guidanceKr: string;
+      score: number | null;
+      alignment: AlignmentSnapshot;
+    };
 
 type TrackContext = { trackId: number; chapterIndex: number };
 
@@ -198,6 +215,13 @@ export default function PronunciationPractice() {
           stepId: currentStep.id,
           guidanceKr: uploaded.guidanceKr ?? '',
           score: uploaded.stepScore ?? null,
+          alignment: {
+            targetText: currentStep.targetText,
+            perceived: uploaded.perceived,
+            canonical: uploaded.canonical,
+            errors: uploaded.errors,
+            wrongWords: uploaded.wrongWords,
+          },
         },
       ]);
     } catch (err) {
@@ -358,6 +382,15 @@ export default function PronunciationPractice() {
                   <p className="text-base text-gray-900 leading-relaxed mb-3">
                     {item.guidanceKr || '발음 결과를 확인했어요.'}
                   </p>
+                  <div className="mb-3">
+                    <PhonemeAlignment
+                      targetText={item.alignment.targetText}
+                      canonical={item.alignment.canonical}
+                      perceived={item.alignment.perceived}
+                      errors={item.alignment.errors}
+                      wrongWords={item.alignment.wrongWords}
+                    />
+                  </div>
                   {isActive && (
                     <div className="flex gap-2">
                       <button
