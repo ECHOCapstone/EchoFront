@@ -1,4 +1,4 @@
-export { authApi } from './auth';
+export { authApi, type LoginInput, type SignupInput } from './auth';
 export { tracksApi } from './tracks';
 export { scriptsApi } from './scripts';
 export { sessionsApi } from './sessions';
