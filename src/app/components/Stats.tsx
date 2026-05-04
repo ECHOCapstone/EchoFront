@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Award, Lock } from 'lucide-react';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
-import { ApiException, statsApi, type Stats as StatsData } from '../api';
+import { statsApi } from '../api';
+import { useApiResource } from '../hooks/useApiResource';
 
 export default function Stats() {
   const today = new Date();
@@ -11,30 +12,11 @@ export default function Stats() {
     year: today.getFullYear(),
     month: today.getMonth() + 1,
   });
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    statsApi
-      .me({ year: calendar.year, month: calendar.month })
-      .then((data) => {
-        if (cancelled) return;
-        setStats(data);
-        setError(null);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(err instanceof ApiException ? err.message : '통계를 불러오지 못했습니다.');
-        }
-      })
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [calendar]);
+  const { data: stats, loading, error } = useApiResource(
+    () => statsApi.me({ year: calendar.year, month: calendar.month }),
+    [calendar.year, calendar.month],
+    { errorFallback: '통계를 불러오지 못했습니다.' }
+  );
 
   const currentDay = today.getDate();
   const isCurrentMonth =
@@ -66,16 +48,19 @@ export default function Stats() {
   const maxErrorCount = weeklyErrors.length > 0 ? Math.max(...weeklyErrors.map((e) => e.count)) : 1;
   const badges = stats?.badges ?? [];
 
-  const getAttendanceColor = (streakDays: number) => {
-    if (streakDays === 0) return 'bg-gray-100';
-    if (streakDays === 1) return 'bg-sky-100';
-    if (streakDays === 2) return 'bg-sky-200';
-    if (streakDays === 3) return 'bg-sky-300';
-    if (streakDays === 4) return 'bg-sky-400';
-    if (streakDays === 5) return 'bg-sky-500';
-    if (streakDays === 6) return 'bg-sky-600';
-    return 'bg-sky-700';
-  };
+  // streak 일수가 늘수록 진해진다. 7일 이상은 모두 가장 진한 단계로 묶어 한도를 둔다.
+  const ATTENDANCE_COLORS = [
+    'bg-gray-100',
+    'bg-sky-100',
+    'bg-sky-200',
+    'bg-sky-300',
+    'bg-sky-400',
+    'bg-sky-500',
+    'bg-sky-600',
+    'bg-sky-700',
+  ] as const;
+  const getAttendanceColor = (streakDays: number): string =>
+    ATTENDANCE_COLORS[Math.min(Math.max(streakDays, 0), ATTENDANCE_COLORS.length - 1)];
 
   return (
     <div className="min-h-screen bg-white flex flex-col">

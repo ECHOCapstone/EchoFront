@@ -1,40 +1,21 @@
 // 학습 트랙 목록 화면. 백엔드 GET /api/tracks 응답을 카드로 노출하고,
 // 카드를 누르면 트랙 진입 화면(`/tracks/:trackId`) 으로 이동한다.
 
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, BookOpen, Flame } from 'lucide-react';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
-import { ApiException, tracksApi, type TrackSummary } from '../api';
+import { tracksApi } from '../api';
+import { useApiResource } from '../hooks/useApiResource';
 import { paths } from '../lib/paths';
 
 export default function TrackList() {
   const navigate = useNavigate();
-  const [tracks, setTracks] = useState<TrackSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    tracksApi
-      .list()
-      .then((data) => {
-        if (cancelled) return;
-        setTracks(data);
-        setError(null);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setError(err instanceof ApiException ? err.message : '학습 트랙을 불러오지 못했습니다.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: tracks, loading, error } = useApiResource(
+    () => tracksApi.list(),
+    [],
+    { errorFallback: '학습 트랙을 불러오지 못했습니다.' }
+  );
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -59,10 +40,10 @@ export default function TrackList() {
         <div className="space-y-4">
           {loading && <p className="text-gray-500">불러오는 중...</p>}
           {!loading && error && <p className="text-red-500">{error}</p>}
-          {!loading && !error && tracks.length === 0 && (
+          {!loading && !error && tracks && tracks.length === 0 && (
             <p className="text-gray-500">아직 등록된 학습 트랙이 없습니다.</p>
           )}
-          {!loading && !error && tracks.map((track) => (
+          {!loading && !error && tracks && tracks.map((track) => (
             <button
               key={track.id}
               onClick={() => navigate(paths.trackOverview(track.id))}

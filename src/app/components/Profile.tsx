@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router';
 import { Bell, FileText, Lock, LogOut, Pencil, User, UserX } from 'lucide-react';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
+import Footer from './Footer';
+import TextEditDialog from './TextEditDialog';
 import { authApi } from '../api';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
@@ -13,6 +15,7 @@ export default function Profile() {
   const { user, logout, refresh } = useAuth();
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [updatingNickname, setUpdatingNickname] = useState(false);
+  const [nicknameDialogOpen, setNicknameDialogOpen] = useState(false);
 
   const nickname = user?.nickname ?? '사용자';
   const email = user?.email ?? '';
@@ -21,21 +24,18 @@ export default function Profile() {
   const handleNotificationToggle = () => setNotificationEnabled((v) => !v);
   const handleTermsAndPolicy = () => alert('약관 및 정책은 추후 제공될 예정입니다.');
 
+  const openNicknameDialog = () => {
+    if (updatingNickname) return;
+    setNicknameDialogOpen(true);
+  };
+
   // 닉네임 변경은 PATCH /api/members/me/nickname → AuthContext.refresh() 한 번이면
   // StatusHeader 와 본 화면 모두 즉시 갱신된다.
-  const handleEditNickname = async () => {
-    if (updatingNickname) return;
-    const next = prompt('새 닉네임을 입력하세요:', nickname);
-    if (next === null) return;
-    const trimmed = next.trim();
-    if (!trimmed) {
-      alert('닉네임은 비워둘 수 없습니다.');
-      return;
-    }
-    if (trimmed === nickname) return;
+  const handleNicknameSubmit = async (next: string) => {
+    if (next === nickname) return;
     setUpdatingNickname(true);
     try {
-      await authApi.changeNickname(trimmed);
+      await authApi.changeNickname(next);
       await refresh();
     } catch (err) {
       notifyApiError(err, '닉네임 변경에 실패했습니다.');
@@ -69,7 +69,7 @@ export default function Profile() {
           <div className="flex items-center justify-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900">{nickname}</h1>
             <button
-              onClick={handleEditNickname}
+              onClick={openNicknameDialog}
               disabled={updatingNickname}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
               aria-label="닉네임 변경"
@@ -90,7 +90,7 @@ export default function Profile() {
               <p className="text-gray-900 font-medium">{nickname}</p>
             </div>
             <button
-              onClick={handleEditNickname}
+              onClick={openNicknameDialog}
               disabled={updatingNickname}
               className="flex items-center gap-1 px-3 h-9 bg-white border-2 border-gray-300 hover:border-sky-500 hover:bg-sky-50 text-gray-900 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
             >
@@ -182,12 +182,24 @@ export default function Profile() {
           </button>
         </div>
 
-        <div className="mt-12 text-center">
-          <p className="text-xs text-gray-500">© O(1)</p>
+        <div className="mt-12">
+          <Footer />
         </div>
       </div>
 
       <BottomNav active="profile" />
+
+      <TextEditDialog
+        open={nicknameDialogOpen}
+        onOpenChange={setNicknameDialogOpen}
+        title="닉네임 변경"
+        description="다른 사용자에게 보여질 이름이에요."
+        initialValue={nickname}
+        placeholder="새 닉네임을 입력하세요"
+        maxLength={30}
+        submitLabel="저장"
+        onSubmit={handleNicknameSubmit}
+      />
     </div>
   );
 }

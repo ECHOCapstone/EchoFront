@@ -10,7 +10,7 @@ export type GenerateFeedbackInput = {
 export const feedbackApi = {
   generate: (input: GenerateFeedbackInput) =>
     apiClient.post<Feedback>('/api/feedback/generate', { json: input }),
-  retryWord: (feedbackId: number, audio: Blob, filename = 'audio.webm') => {
+  retryWord: (feedbackId: number, audio: Blob, filename = 'audio.wav') => {
     const form = new FormData();
     form.append('audio', audio, filename);
     return apiClient.post<RetryWordResult>(`/api/feedback/${feedbackId}/retry-word`, { formData: form });

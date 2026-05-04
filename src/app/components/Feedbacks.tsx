@@ -1,42 +1,25 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Check } from 'lucide-react';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import FeedbackFlow from './FeedbackFlow';
-import { ApiException, feedbackApi, type Feedback } from '../api';
+import { feedbackApi } from '../api';
+import { useApiResource } from '../hooks/useApiResource';
 
 // 가장 최근 종합 피드백을 받아 그대로 보여준다. 백엔드의 /api/feedbacks 목록 중 첫 항목을 detail 로 다시 조회한다.
+async function fetchLatestFeedback() {
+  const list = await feedbackApi.list();
+  if (list.length === 0) return null;
+  return feedbackApi.get(list[0].id);
+}
+
 export default function Feedbacks() {
   const navigate = useNavigate();
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const list = await feedbackApi.list();
-        if (cancelled) return;
-        if (list.length === 0) {
-          setFeedback(null);
-        } else {
-          const detail = await feedbackApi.get(list[0].id);
-          if (!cancelled) setFeedback(detail);
-        }
-      } catch (err: unknown) {
-        if (!cancelled) {
-          setError(err instanceof ApiException ? err.message : '피드백을 불러오지 못했습니다.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: feedback, loading, error } = useApiResource(
+    fetchLatestFeedback,
+    [],
+    { errorFallback: '피드백을 불러오지 못했습니다.' }
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

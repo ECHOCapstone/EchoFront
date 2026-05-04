@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
+import Footer from './Footer';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
@@ -173,11 +174,8 @@ export default function Login() {
           </Button>
         </div>
 
-        {/* 저작권 */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-gray-500">
-            © O(1)
-          </p>
+        <div className="mt-8">
+          <Footer />
         </div>
       </div>
     </div>

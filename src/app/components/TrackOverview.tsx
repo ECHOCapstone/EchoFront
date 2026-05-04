@@ -2,47 +2,35 @@
 // "처음부터 시작" 버튼은 chapterIndex=0 로 PronunciationPractice 를 띄운다.
 // 챕터 카드 직접 클릭 시 해당 chapterIndex 로 진입한다.
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft, BookOpen, Play } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
-import { ApiException, tracksApi, type TrackDetail } from '../api';
+import { tracksApi } from '../api';
+import { useApiResource } from '../hooks/useApiResource';
 import { paths } from '../lib/paths';
 
 export default function TrackOverview() {
   const navigate = useNavigate();
   const { trackId: trackIdParam } = useParams<{ trackId: string }>();
   const trackId = Number(trackIdParam);
-  const [track, setTrack] = useState<TrackDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const trackIdValid = Number.isFinite(trackId) && trackId > 0;
 
-  useEffect(() => {
-    if (!Number.isFinite(trackId) || trackId <= 0) {
-      navigate(paths.tracks, { replace: true });
-      return;
+  const { data: track, loading, error } = useApiResource(
+    () => tracksApi.detail(trackId),
+    [trackId],
+    {
+      enabled: trackIdValid,
+      errorFallback: '트랙을 불러오지 못했습니다.',
     }
-    let cancelled = false;
-    tracksApi
-      .detail(trackId)
-      .then((data) => {
-        if (cancelled) return;
-        setTrack(data);
-        setError(null);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setError(err instanceof ApiException ? err.message : '트랙을 불러오지 못했습니다.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [trackId, navigate]);
+  );
+
+  // 비정상 trackId 진입은 트랙 목록으로 되돌린다 (URL 변조나 잘못된 링크 대응).
+  useEffect(() => {
+    if (!trackIdValid) navigate(paths.tracks, { replace: true });
+  }, [trackIdValid, navigate]);
 
   // 챕터 진입은 항상 트랙 컨텍스트(trackId, chapterIndex)와 함께 이뤄진다.
   // 이렇게 해야 PronunciationPractice 가 "다음 챕터" 흐름을 자체적으로 이어갈 수 있다.

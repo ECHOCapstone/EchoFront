@@ -1,33 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Trophy } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
-import { ApiException, rankingApi, type Ranking as RankingData } from '../api';
+import { rankingApi } from '../api';
+import { useApiResource } from '../hooks/useApiResource';
 import { paths } from '../lib/paths';
 
 export default function Ranking() {
   const navigate = useNavigate();
-  const [data, setData] = useState<RankingData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    rankingApi
-      .today()
-      .then((d) => !cancelled && setData(d))
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(err instanceof ApiException ? err.message : '랭킹을 불러오지 못했습니다.');
-        }
-      })
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data, loading, error } = useApiResource(
+    () => rankingApi.today(),
+    [],
+    { errorFallback: '랭킹을 불러오지 못했습니다.' }
+  );
 
   const visible = useMemo(() => {
     if (!data) return [];

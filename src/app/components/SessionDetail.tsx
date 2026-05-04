@@ -1,64 +1,46 @@
 // 사용자 맞춤 학습 세션 상세. URL ?sessionId=N 으로 진입한다.
 //
 // 흐름
-//   1. 세션 로드 → 대본이 비어있으면 입력 화면, 있으면 step-by-step 학습 화면
+//   1. 세션 로드 → 대본이 비어있으면 입력 화면, 있으면 LearningChatFlow 로 한 문장씩 학습
 //   2. 대본 제출 → PATCH /api/sessions/{id} → 백엔드 SentenceSplitter 가 자동 분할
-//   3. 문장 1개씩 노출 → 녹음 → POST /api/recordings (sessionId + sessionSentenceId)
-//      → 즉시 가이드 + 다시/다음 버튼 (PronunciationPractice 와 동일 패턴)
-//   4. 마지막 문장 통과 후 POST /api/feedback/generate (sessionId, recordingIds=[per-sentence])
-//   5. FeedbackFlow 노출 → 학습 완료 시 EXP/streak 보상 + customLearning 으로 복귀
+//   3. 마지막 문장 통과 후 LearningChatFlow 가 onUnitComplete 호출 → POST /api/feedback/generate
+//   4. FeedbackFlow 노출 → 학습 완료 시 EXP/streak 보상 + customLearning 으로 복귀
+//
+// 채팅 흐름은 PronunciationPractice 와 LearningChatFlow 컴포넌트를 공유한다.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeft, Pencil, RotateCcw, Trash2, Volume2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { BotBubble, UserBubble } from './ChatBubble';
 import FeedbackFlow from './FeedbackFlow';
-import PhonemeAlignment from './PhonemeAlignment';
-import RecordButton from './RecordButton';
+import LearningChatFlow, { type LearningPrompt } from './learning/LearningChatFlow';
+import TextEditDialog from './TextEditDialog';
 import {
   feedbackApi,
   recordingsApi,
   sessionsApi,
   type Feedback,
-  type PhonemeError,
   type Session,
   type SessionSentence,
-  type WrongWord,
 } from '../api';
-import { useRecorder } from '../hooks/useRecorder';
-import { useTtsPlayer } from '../hooks/useTtsPlayer';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 
-type AlignmentSnapshot = {
-  targetText: string | null;
-  perceived: string[];
-  canonical: string[];
-  errors: PhonemeError[];
-  wrongWords: WrongWord[];
-};
-
-type ChatItem =
-  | { kind: 'bot-sentence'; sentence: SessionSentence }
-  | {
-      kind: 'user-record';
-      key: string;
-      recordingId: number;
-      sentenceId: number;
-      score: number | null;
-    }
-  | {
-      kind: 'bot-feedback';
-      key: string;
-      sentenceId: number;
-      guidanceKr: string;
-      score: number | null;
-      alignment: AlignmentSnapshot;
-    };
+// 문장 한 개를 LearningChatFlow 가 받는 prompt 로 변환한다. 매 prompt 가 RECORD 라
+// canRecord/ttsText 모두 항상 채워진다.
+function toLearningPrompt(sentence: SessionSentence): LearningPrompt {
+  return {
+    id: sentence.id,
+    instruction: '아래 문장을 또렷하게 발음해 보세요.',
+    target: sentence.text,
+    canRecord: true,
+    ttsText: sentence.text,
+  };
+}
 
 export default function SessionDetail() {
   const navigate = useNavigate();
@@ -69,33 +51,12 @@ export default function SessionDetail() {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }, [searchParams]);
 
-  const recorder = useRecorder();
-  const tts = useTtsPlayer();
-
   const [session, setSession] = useState<Session | null>(null);
   const [scriptDraft, setScriptDraft] = useState('');
   const [editingScript, setEditingScript] = useState(false);
-  const [chat, setChat] = useState<ChatItem[]>([]);
-  const [sentenceIndex, setSentenceIndex] = useState(0);
-  // sentence.id → 가장 마지막 시도의 recordingId. 종합 피드백 generate 시 그대로 전송된다.
-  const [latestRecordingBySentence, setLatestRecordingBySentence] = useState<Record<number, number>>({});
-  const [unitDone, setUnitDone] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [busyStep, setBusyStep] = useState(false);
-
-  const chatBottomRef = useRef<HTMLDivElement | null>(null);
-
-  // 채팅 흐름은 sentences 가 채워진 시점에 첫 문장 한 개로 시작한다.
-  const initializeChat = (sentences: SessionSentence[]) => {
-    if (sentences.length === 0) {
-      setChat([]);
-      setSentenceIndex(0);
-      return;
-    }
-    setChat([{ kind: 'bot-sentence', sentence: sentences[0] }]);
-    setSentenceIndex(0);
-  };
+  const [titleDialogOpen, setTitleDialogOpen] = useState(false);
 
   useEffect(() => {
     if (sessionId === null) {
@@ -109,12 +70,7 @@ export default function SessionDetail() {
         if (cancelled) return;
         setSession(data);
         setScriptDraft(data.scriptText);
-        if (data.sentences.length === 0) {
-          setEditingScript(true);
-        } else {
-          setEditingScript(false);
-          initializeChat(data.sentences);
-        }
+        setEditingScript(data.sentences.length === 0);
       })
       .catch((err: unknown) => {
         if (!cancelled) notifyApiError(err, '세션을 불러오지 못했습니다.');
@@ -124,29 +80,48 @@ export default function SessionDetail() {
     };
   }, [sessionId, navigate]);
 
-  // 새 채팅 메시지가 추가되면 자동으로 화면 가장 아래로 스크롤한다.
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [chat.length, feedback, generating, editingScript]);
-
   const sentences = session?.sentences ?? [];
-  const currentSentence = sentenceIndex < sentences.length ? sentences[sentenceIndex] : null;
+  const prompts = useMemo<LearningPrompt[]>(
+    () => sentences.map(toLearningPrompt),
+    [sentences]
+  );
+  // sentences 가 바뀌면 LearningChatFlow 를 리마운트해 채팅을 초기화한다.
+  const chatKey = useMemo(() => prompts.map((p) => p.id).join(','), [prompts]);
 
-  // 가장 최근 bot-feedback 만 액션 가능. 그 외 시도의 버튼들은 sentenceId 일치 조건으로 자동 비활성된다.
-  const latestFeedbackKey = useMemo(() => {
-    for (let i = chat.length - 1; i >= 0; i -= 1) {
-      const item = chat[i];
-      if (item.kind === 'bot-feedback') return item.key;
-    }
-    return null;
-  }, [chat]);
+  const upload = useCallback(
+    async (audio: Blob, prompt: LearningPrompt) => {
+      return recordingsApi.upload({
+        audio,
+        filename: `sentence-${prompt.id}.wav`,
+        sessionId: session!.id,
+        sessionSentenceId: prompt.id,
+      });
+    },
+    [session]
+  );
 
-  const handleTitleEdit = async () => {
+  const handleUnitComplete = useCallback(
+    (recordingIds: number[]) => {
+      if (!session || recordingIds.length === 0) return;
+      setGenerating(true);
+      feedbackApi
+        .generate({ sessionId: session.id, recordingIds })
+        .then(setFeedback)
+        .catch((err: unknown) => notifyApiError(err, '피드백 생성에 실패했습니다.'))
+        .finally(() => setGenerating(false));
+    },
+    [session]
+  );
+
+  const openTitleDialog = () => {
     if (!session) return;
-    const newTitle = prompt('세션 제목을 입력하세요:', session.title);
-    if (!newTitle || !newTitle.trim()) return;
+    setTitleDialogOpen(true);
+  };
+
+  const handleTitleSubmit = async (newTitle: string) => {
+    if (!session || newTitle === session.title) return;
     try {
-      const updated = await sessionsApi.update(session.id, { title: newTitle.trim() });
+      const updated = await sessionsApi.update(session.id, { title: newTitle });
       setSession(updated);
     } catch (err) {
       notifyApiError(err, '제목 수정에 실패했습니다.');
@@ -155,19 +130,13 @@ export default function SessionDetail() {
 
   const handleSubmitScript = async () => {
     if (!session) return;
-    if (!scriptDraft.trim()) {
-      alert('대본을 먼저 입력해주세요.');
-      return;
-    }
+    if (!scriptDraft.trim()) return;
     try {
       const updated = await sessionsApi.update(session.id, { scriptText: scriptDraft });
       setSession(updated);
       setEditingScript(false);
-      // 대본이 갱신되면 이전 학습 흐름은 모두 초기화한다.
-      setLatestRecordingBySentence({});
-      setUnitDone(false);
+      // 대본이 갱신되면 이전 학습 흐름은 모두 초기화된다 (chatKey 가 바뀌어 채팅 컴포넌트도 리마운트된다).
       setFeedback(null);
-      initializeChat(updated.sentences);
     } catch (err) {
       notifyApiError(err, '대본 저장에 실패했습니다.');
     }
@@ -191,86 +160,6 @@ export default function SessionDetail() {
     }
   };
 
-  const handleStartRecording = async () => {
-    await recorder.start();
-  };
-
-  const handleStopRecording = async () => {
-    if (!session || !currentSentence || busyStep) return;
-    setBusyStep(true);
-    const result = await recorder.stop();
-    if (!result) {
-      setBusyStep(false);
-      return;
-    }
-    try {
-      const uploaded = await recordingsApi.upload({
-        audio: result.blob,
-        filename: `sentence-${currentSentence.id}.wav`,
-        sessionId: session.id,
-        sessionSentenceId: currentSentence.id,
-      });
-      setLatestRecordingBySentence((prev) => ({ ...prev, [currentSentence.id]: uploaded.id }));
-      setChat((prev) => [
-        ...prev,
-        {
-          kind: 'user-record',
-          key: `u-${uploaded.id}`,
-          recordingId: uploaded.id,
-          sentenceId: currentSentence.id,
-          score: uploaded.stepScore ?? null,
-        },
-        {
-          kind: 'bot-feedback',
-          key: `f-${uploaded.id}`,
-          sentenceId: currentSentence.id,
-          guidanceKr: uploaded.guidanceKr ?? '',
-          score: uploaded.stepScore ?? null,
-          alignment: {
-            targetText: currentSentence.text,
-            perceived: uploaded.perceived,
-            canonical: uploaded.canonical,
-            errors: uploaded.errors,
-            wrongWords: uploaded.wrongWords,
-          },
-        },
-      ]);
-    } catch (err) {
-      notifyApiError(err, '녹음 업로드에 실패했습니다.');
-    } finally {
-      setBusyStep(false);
-    }
-  };
-
-  const handleAdvance = () => {
-    if (!session) return;
-    const next = sentenceIndex + 1;
-    if (next >= sentences.length) {
-      setSentenceIndex(next);
-      setUnitDone(true);
-      return;
-    }
-    setSentenceIndex(next);
-    setChat((prev) => [...prev, { kind: 'bot-sentence', sentence: sentences[next] }]);
-  };
-
-  const handleRetry = () => {
-    if (!currentSentence) return;
-    setChat((prev) => [...prev, { kind: 'bot-sentence', sentence: currentSentence }]);
-  };
-
-  useEffect(() => {
-    if (!unitDone || feedback || generating || !session) return;
-    const recordingIds = Object.values(latestRecordingBySentence);
-    if (recordingIds.length === 0) return;
-    setGenerating(true);
-    feedbackApi
-      .generate({ sessionId: session.id, recordingIds })
-      .then(setFeedback)
-      .catch((err: unknown) => notifyApiError(err, '피드백 생성에 실패했습니다.'))
-      .finally(() => setGenerating(false));
-  }, [unitDone, feedback, generating, session, latestRecordingBySentence]);
-
   const handleEndLearning = () => {
     if (confirm('학습을 끝내시겠습니까?')) {
       navigate(paths.customLearning);
@@ -280,18 +169,6 @@ export default function SessionDetail() {
   if (!session) {
     return <div className="min-h-screen flex items-center justify-center text-gray-500">불러오는 중...</div>;
   }
-
-  // 마지막 채팅이 현재 문장 prompt 이고 그 외 행동이 없을 때만 녹음 버튼을 활성화한다.
-  const lastChatItem = chat[chat.length - 1];
-  const showRecordButton =
-    !editingScript &&
-    !unitDone &&
-    !feedback &&
-    !generating &&
-    currentSentence !== null &&
-    lastChatItem !== undefined &&
-    lastChatItem.kind === 'bot-sentence' &&
-    lastChatItem.sentence.id === currentSentence.id;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -320,7 +197,7 @@ export default function SessionDetail() {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900">{session.title}</h1>
             <button
-              onClick={handleTitleEdit}
+              onClick={openTitleDialog}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               aria-label="제목 수정"
             >
@@ -329,7 +206,7 @@ export default function SessionDetail() {
           </div>
           {sentences.length > 0 && !editingScript && (
             <p className="text-xs font-medium text-sky-600 mt-1">
-              문장 {Math.min(sentenceIndex + 1, sentences.length)}/{sentences.length}
+              {sentences.length}문장
             </p>
           )}
         </div>
@@ -353,7 +230,8 @@ export default function SessionDetail() {
                 />
                 <Button
                   onClick={handleSubmitScript}
-                  className="w-full h-11 mt-3 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-xl"
+                  disabled={!scriptDraft.trim()}
+                  className="w-full h-11 mt-3 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-xl disabled:opacity-50"
                 >
                   대본 입력 완료
                 </Button>
@@ -376,84 +254,14 @@ export default function SessionDetail() {
                 </div>
               </BotBubble>
 
-              {chat.map((item, idx) => {
-                if (item.kind === 'user-record') {
-                  const scoreLabel = item.score !== null ? ` · ${item.score.toFixed(1)}점` : '';
-                  return <UserBubble key={item.key}>녹음 완료!{scoreLabel}</UserBubble>;
-                }
-                if (item.kind === 'bot-feedback') {
-                  const isActive =
-                    item.key === latestFeedbackKey
-                    && currentSentence !== null
-                    && item.sentenceId === currentSentence.id
-                    && !unitDone
-                    && !feedback
-                    && !generating;
-                  return (
-                    <BotBubble key={item.key}>
-                      <p className="text-base text-gray-900 leading-relaxed mb-3">
-                        {item.guidanceKr || '발음 결과를 확인했어요.'}
-                      </p>
-                      <div className="mb-3">
-                        <PhonemeAlignment
-                          targetText={item.alignment.targetText}
-                          canonical={item.alignment.canonical}
-                          perceived={item.alignment.perceived}
-                          errors={item.alignment.errors}
-                          wrongWords={item.alignment.wrongWords}
-                        />
-                      </div>
-                      {isActive && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleRetry}
-                            disabled={busyStep}
-                            className="flex-1 flex items-center justify-center gap-1.5 h-11 bg-white border-2 border-gray-300 hover:border-orange-400 hover:bg-orange-50 text-gray-900 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-                          >
-                            <RotateCcw size={16} className="text-orange-500" />
-                            <span>다시 발음하기</span>
-                          </button>
-                          <button
-                            onClick={handleAdvance}
-                            disabled={busyStep}
-                            className="flex-1 h-11 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-                          >
-                            {sentenceIndex >= sentences.length - 1 ? '학습 마무리' : '다음 문장으로'}
-                          </button>
-                        </div>
-                      )}
-                    </BotBubble>
-                  );
-                }
-                const sentence = item.sentence;
-                const isPrompt = idx === chat.length - 1 && showRecordButton;
-                return (
-                  <BotBubble key={`sentence-${sentence.id}-${idx}`}>
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <p className="text-base text-gray-900 leading-relaxed flex-1">
-                        아래 문장을 또렷하게 발음해 보세요.
-                        <span className="block mt-2 text-lg font-bold">{sentence.text}</span>
-                      </p>
-                      <button
-                        onClick={() => tts.play(sentence.text)}
-                        className="p-2 bg-sky-500 hover:bg-sky-600 rounded-full transition-colors flex-shrink-0"
-                        aria-label="예시 음성 듣기"
-                      >
-                        <Volume2 size={18} className="text-white" />
-                      </button>
-                    </div>
-                    {isPrompt && (
-                      <RecordButton
-                        isRecording={recorder.isRecording}
-                        busy={busyStep}
-                        onStart={handleStartRecording}
-                        onStop={handleStopRecording}
-                        busyLabel="업로드 중..."
-                      />
-                    )}
-                  </BotBubble>
-                );
-              })}
+              <LearningChatFlow
+                key={chatKey}
+                prompts={prompts}
+                upload={upload}
+                onUnitComplete={handleUnitComplete}
+                disabled={generating || feedback !== null}
+                advanceLabel="다음 문장으로"
+              />
 
               {generating && (
                 <BotBubble>
@@ -469,7 +277,6 @@ export default function SessionDetail() {
               )}
             </>
           )}
-          <div ref={chatBottomRef} />
         </div>
 
         <div className="mt-8">
@@ -484,6 +291,17 @@ export default function SessionDetail() {
       </div>
 
       <BottomNav variant="study" active="home" />
+
+      <TextEditDialog
+        open={titleDialogOpen}
+        onOpenChange={setTitleDialogOpen}
+        title="세션 제목 변경"
+        initialValue={session.title}
+        placeholder="세션 제목을 입력하세요"
+        maxLength={100}
+        submitLabel="저장"
+        onSubmit={handleTitleSubmit}
+      />
     </div>
   );
 }

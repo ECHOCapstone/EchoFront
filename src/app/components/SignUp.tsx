@@ -5,9 +5,22 @@ import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
+import Footer from './Footer';
 import { authApi } from '../api';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
+
+// 입력 필드별 인라인 에러 메시지를 담는 컨테이너. 키가 없으면 그 필드는 정상.
+type FormErrors = {
+  id?: string;
+  password?: string;
+  passwordConfirm?: string;
+  email?: string;
+  terms?: string;
+};
+
+// 중복 확인 결과를 인라인으로 노출하기 위한 상태. idle 일 때는 메시지 자체가 표시되지 않는다.
+type CheckStatus = 'idle' | 'available' | 'taken';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -23,10 +36,11 @@ export default function SignUp() {
     nickname: '',
     email: '',
   });
-  const [checkResults, setCheckResults] = useState({
-    id: false,
-    email: false,
+  const [checkStatus, setCheckStatus] = useState<{ id: CheckStatus; email: CheckStatus }>({
+    id: 'idle',
+    email: 'idle',
   });
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const handleCheckDuplicate = async (field: 'id' | 'email') => {
     const value = formData[field];
@@ -35,34 +49,36 @@ export default function SignUp() {
       const result = field === 'id'
         ? await authApi.checkUsername(value)
         : await authApi.checkEmail(value);
-      setCheckResults((prev) => ({ ...prev, [field]: result.available }));
-      const label = field === 'id' ? '아이디' : '이메일';
-      alert(result.available ? `사용 가능한 ${label}입니다.` : `이미 사용 중인 ${label}입니다.`);
+      setCheckStatus((prev) => ({ ...prev, [field]: result.available ? 'available' : 'taken' }));
+      // 중복확인이 다시 통과했다면 같은 필드에 묶여 있던 에러 메시지도 같이 비운다.
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
     } catch (err) {
       notifyApiError(err, '중복 확인에 실패했습니다.');
     }
+  };
+
+  // 제출 직전 모든 필드를 한 번에 검증한다. 첫 번째 에러에서 멈추지 않고 모두 모아 인라인으로 노출.
+  const validate = (): FormErrors => {
+    const next: FormErrors = {};
+    if (!formData.id) next.id = '아이디를 입력해주세요.';
+    else if (checkStatus.id !== 'available') next.id = '아이디 중복확인을 해주세요.';
+    if (!formData.password) next.password = '비밀번호를 입력해주세요.';
+    if (formData.password !== formData.passwordConfirm) {
+      next.passwordConfirm = '비밀번호가 일치하지 않습니다.';
+    }
+    if (!formData.email) next.email = '이메일을 입력해주세요.';
+    else if (checkStatus.email !== 'available') next.email = '이메일 중복확인을 해주세요.';
+    if (!agreed) next.terms = '서비스 이용약관에 동의해주세요.';
+    return next;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
 
-    if (!checkResults.id) {
-      alert('아이디 중복확인을 해주세요.');
-      return;
-    }
-    if (!checkResults.email) {
-      alert('이메일 중복확인을 해주세요.');
-      return;
-    }
-    if (formData.password !== formData.passwordConfirm) {
-      alert('비밀번호가 일치하지 않습니다.');
-      return;
-    }
-    if (!agreed) {
-      alert('서비스 이용약관에 동의해주세요.');
-      return;
-    }
+    const nextErrors = validate();
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
     setSubmitting(true);
     try {
@@ -102,11 +118,8 @@ export default function SignUp() {
             로그인하기
           </Button>
 
-          {/* 저작권 */}
           <div className="mt-8">
-            <p className="text-xs text-gray-500">
-              © O(1)
-            </p>
+            <Footer />
           </div>
         </div>
       </div>
@@ -132,7 +145,7 @@ export default function SignUp() {
         </div>
 
         {/* 회원가입 폼 */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           {/* ID 입력 + 중복확인 */}
           <div className="space-y-2">
             <Label htmlFor="signup-id" className="text-gray-700">아이디</Label>
@@ -144,8 +157,12 @@ export default function SignUp() {
                 value={formData.id}
                 onChange={(e) => {
                   setFormData({ ...formData, id: e.target.value });
-                  setCheckResults({ ...checkResults, id: false });
+                  // 입력이 바뀌면 이전 중복확인 결과는 무효화한다.
+                  setCheckStatus((prev) => ({ ...prev, id: 'idle' }));
+                  setErrors((prev) => ({ ...prev, id: undefined }));
                 }}
+                aria-invalid={errors.id !== undefined}
+                aria-describedby="signup-id-message"
                 className="h-12 flex-1 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
               />
               <Button
@@ -157,6 +174,13 @@ export default function SignUp() {
                 중복확인
               </Button>
             </div>
+            <FieldMessage
+              id="signup-id-message"
+              error={errors.id}
+              status={checkStatus.id === 'available' ? '사용 가능한 아이디입니다.' : null}
+              statusKind={checkStatus.id === 'taken' ? 'error' : 'ok'}
+              statusError={checkStatus.id === 'taken' ? '이미 사용 중인 아이디입니다.' : null}
+            />
           </div>
 
           {/* Password 입력 */}
@@ -168,7 +192,12 @@ export default function SignUp() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="비밀번호를 입력하세요"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, password: e.target.value });
+                  setErrors((prev) => ({ ...prev, password: undefined }));
+                }}
+                aria-invalid={errors.password !== undefined}
+                aria-describedby="signup-password-message"
                 className="h-12 pr-10 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
               />
               <button
@@ -179,6 +208,7 @@ export default function SignUp() {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
+            <FieldMessage id="signup-password-message" error={errors.password} />
           </div>
 
           {/* Password 확인 입력 */}
@@ -190,7 +220,12 @@ export default function SignUp() {
                 type={showPasswordConfirm ? 'text' : 'password'}
                 placeholder="비밀번호를 다시 입력하세요"
                 value={formData.passwordConfirm}
-                onChange={(e) => setFormData({ ...formData, passwordConfirm: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, passwordConfirm: e.target.value });
+                  setErrors((prev) => ({ ...prev, passwordConfirm: undefined }));
+                }}
+                aria-invalid={errors.passwordConfirm !== undefined}
+                aria-describedby="signup-password-confirm-message"
                 className="h-12 pr-10 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
               />
               <button
@@ -201,9 +236,16 @@ export default function SignUp() {
                 {showPasswordConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            {formData.passwordConfirm && formData.password !== formData.passwordConfirm && (
-              <p className="text-sm text-red-500">비밀번호가 일치하지 않습니다.</p>
-            )}
+            <FieldMessage
+              id="signup-password-confirm-message"
+              // 입력 중에도 즉시 mismatch 메시지가 떠야 사용자가 바로 잡을 수 있다.
+              error={
+                errors.passwordConfirm
+                ?? (formData.passwordConfirm && formData.password !== formData.passwordConfirm
+                  ? '비밀번호가 일치하지 않습니다.'
+                  : undefined)
+              }
+            />
           </div>
 
           {/* 닉네임 입력 */}
@@ -230,8 +272,11 @@ export default function SignUp() {
                 value={formData.email}
                 onChange={(e) => {
                   setFormData({ ...formData, email: e.target.value });
-                  setCheckResults({ ...checkResults, email: false });
+                  setCheckStatus((prev) => ({ ...prev, email: 'idle' }));
+                  setErrors((prev) => ({ ...prev, email: undefined }));
                 }}
+                aria-invalid={errors.email !== undefined}
+                aria-describedby="signup-email-message"
                 className="h-12 flex-1 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
               />
               <Button
@@ -243,15 +288,25 @@ export default function SignUp() {
                 중복확인
               </Button>
             </div>
+            <FieldMessage
+              id="signup-email-message"
+              error={errors.email}
+              status={checkStatus.email === 'available' ? '사용 가능한 이메일입니다.' : null}
+              statusKind={checkStatus.email === 'taken' ? 'error' : 'ok'}
+              statusError={checkStatus.email === 'taken' ? '이미 사용 중인 이메일입니다.' : null}
+            />
           </div>
 
           {/* 서비스 이용약관 동의 */}
-          <div className="pt-4">
+          <div className="pt-4 space-y-2">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="terms"
                 checked={agreed}
-                onCheckedChange={(checked) => setAgreed(checked as boolean)}
+                onCheckedChange={(checked) => {
+                  setAgreed(checked as boolean);
+                  setErrors((prev) => ({ ...prev, terms: undefined }));
+                }}
                 className="border-gray-300 data-[state=checked]:bg-sky-500 data-[state=checked]:border-sky-500"
               />
               <label
@@ -261,6 +316,7 @@ export default function SignUp() {
                 서비스 이용약관에 동의합니다
               </label>
             </div>
+            <FieldMessage error={errors.terms} />
           </div>
 
           <Button
@@ -272,13 +328,35 @@ export default function SignUp() {
           </Button>
         </form>
 
-        {/* 저작권 */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-gray-500">
-            © O(1)
-          </p>
+        <div className="mt-8">
+          <Footer />
         </div>
       </div>
     </div>
   );
+}
+
+// 인라인 필드 메시지. error 가 있으면 빨강 우선, 없고 status 만 있으면 파랑/빨강 보조 메시지 표시.
+//   error          — 검증 실패 메시지 (빨강)
+//   status         — 성공 메시지 (statusKind 'ok' 일 때 파랑)
+//   statusError    — 실패 메시지 (statusKind 'error' 일 때 빨강)
+interface FieldMessageProps {
+  id?: string;
+  error?: string;
+  status?: string | null;
+  statusKind?: 'ok' | 'error';
+  statusError?: string | null;
+}
+
+function FieldMessage({ id, error, status, statusKind, statusError }: FieldMessageProps) {
+  if (error) {
+    return <p id={id} className="text-sm text-red-500">{error}</p>;
+  }
+  if (statusKind === 'error' && statusError) {
+    return <p id={id} className="text-sm text-red-500">{statusError}</p>;
+  }
+  if (status) {
+    return <p id={id} className="text-sm text-sky-600">{status}</p>;
+  }
+  return null;
 }
