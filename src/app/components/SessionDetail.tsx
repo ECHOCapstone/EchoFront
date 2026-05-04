@@ -171,7 +171,7 @@ export default function SessionDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 max-w-md mx-auto md:shadow-xl flex flex-col">
       <div className="flex-1 p-6 pb-24">
         <StatusHeader />
 

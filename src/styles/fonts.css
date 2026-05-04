@@ -15,3 +15,11 @@ body,
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* 모바일 우선 앱이라 데스크톱에서는 화면이 폰 프레임처럼 가운데 모이도록 외곽에 옅은 배경을 둔다.
+   모바일(<= 767px) 에서는 폰 프레임이 뷰포트를 가득 채워 이 색이 보이지 않는다. */
+@media (min-width: 768px) {
+  body {
+    background-color: rgb(226 232 240);
+  }
+}

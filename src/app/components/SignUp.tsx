@@ -100,8 +100,8 @@ export default function SignUp() {
   // 회원가입 완료 화면
   if (isSignUpComplete) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md text-center">
+      <div className="min-h-screen bg-white max-w-md mx-auto md:shadow-xl flex items-center justify-center p-4">
+        <div className="w-full text-center">
           <div className="mb-8">
             <div className="flex justify-center mb-6">
               <CheckCircle size={80} className="text-sky-500" />
@@ -127,8 +127,8 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-white max-w-md mx-auto md:shadow-xl flex items-center justify-center p-4">
+      <div className="w-full">
         {/* 헤더 */}
         <div className="mb-8">
           <button

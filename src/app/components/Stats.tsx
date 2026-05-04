@@ -63,7 +63,7 @@ export default function Stats() {
     ATTENDANCE_COLORS[Math.min(Math.max(streakDays, 0), ATTENDANCE_COLORS.length - 1)];
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white max-w-md mx-auto md:shadow-xl flex flex-col">
       <div className="flex-1 p-6 pb-24 overflow-y-auto">
         <StatusHeader />
 

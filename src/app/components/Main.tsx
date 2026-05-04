@@ -11,7 +11,7 @@ export default function Main() {
   const nickname = user?.nickname ?? '사용자';
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white max-w-md mx-auto md:shadow-xl flex flex-col">
       <div className="flex-1 p-6 pb-24">
         <StatusHeader />
 
