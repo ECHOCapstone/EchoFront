@@ -87,6 +87,14 @@ export default function PronunciationPractice() {
     }
   }, [scriptId, trackContext, navigate]);
 
+  // 트랙 모드의 "다음 챕터로" 는 같은 라우트의 searchParams 만 바꾸므로 컴포넌트가 unmount 되지 않는다.
+  // scriptId 가 바뀌면 단위 학습 로컬 상태를 명시적으로 초기화해 이전 챕터의 피드백/모달이 새 챕터에 잔류하지 않게 한다.
+  useEffect(() => {
+    setFeedback(null);
+    setGenerating(false);
+    setTrackCompleteOpen(false);
+  }, [scriptId]);
+
   // 챕터 자체 로드. URL 의 scriptId 가 바뀌면 LearningChatFlow 도 같이 리마운트되어 채팅이 초기화된다.
   const { data: script, error: loadError } = useApiResource(
     () => scriptsApi.detail(scriptId!),
