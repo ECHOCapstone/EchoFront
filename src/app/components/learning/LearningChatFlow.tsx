@@ -17,7 +17,7 @@ import PhonemeAlignment from '../PhonemeAlignment';
 import RecordButton from '../RecordButton';
 import { useRecorder } from '../../hooks/useRecorder';
 import { useTtsPlayer } from '../../hooks/useTtsPlayer';
-import type { PhonemeError, RecordingResult, WrongWord } from '../../api';
+import type { PhonemeError, PhonemeTip, RecordingResult, WrongWord } from '../../api';
 import { notifyApiError } from '../../lib/notify';
 
 // 채팅 흐름에 노출되는 한 단계. id 는 부모 도메인 (LearningStep / SessionSentence) 의 식별자를 그대로 쓴다.
@@ -59,6 +59,12 @@ type ChatItem =
       promptId: number;
       guidanceKr: string;
       score: number | null;
+      // 백엔드가 결정한 통과 여부 + 재학습 권고 — 프론트는 그대로 따른다 (SSOT).
+      passed: boolean;
+      retryRecommended: boolean;
+      strengths: string[];
+      weaknesses: string[];
+      phonemeTips: PhonemeTip[];
       alignment: AlignmentSnapshot;
     };
 
@@ -139,6 +145,11 @@ export default function LearningChatFlow({
           promptId: currentPrompt.id,
           guidanceKr: uploaded.guidanceKr ?? '',
           score: uploaded.stepScore ?? null,
+          passed: uploaded.passed,
+          retryRecommended: uploaded.retryRecommended,
+          strengths: uploaded.strengths ?? [],
+          weaknesses: uploaded.weaknesses ?? [],
+          phonemeTips: uploaded.phonemeTips ?? [],
           alignment: {
             targetText: currentPrompt.target,
             perceived: uploaded.perceived,
@@ -201,11 +212,44 @@ export default function LearningChatFlow({
             currentPrompt !== null &&
             item.promptId === currentPrompt.id;
           const isLast = promptIndex >= prompts.length - 1;
+          // 점수 임계와 LLM 판단을 합친 백엔드의 통과 신호 (passed) 와 재학습 권고 (retryRecommended) 를
+          // 그대로 따라 액션 강조와 헤더 메시지를 결정한다.
+          const passed = item.passed;
+          const retryRecommended = item.retryRecommended;
+          const headline = passed
+            ? '통과! 다음으로 넘어가도 좋아요.'
+            : retryRecommended
+              ? '재학습이 필요해요. 한 번 더 시도해 볼까요?'
+              : '발음 결과를 확인했어요.';
+          const headlineColor = passed ? 'text-green-600' : retryRecommended ? 'text-orange-500' : 'text-gray-900';
+          // primary CTA 는 passed 면 "다음으로", 아니면 "다시 발음하기".
+          const primaryAdvance = passed;
           return (
             <BotBubble key={item.key}>
-              <p className="text-base text-gray-900 leading-relaxed mb-3">
-                {item.guidanceKr || '발음 결과를 확인했어요.'}
+              <p className={`text-base font-semibold leading-relaxed mb-1 ${headlineColor}`}>
+                {headline}
               </p>
+              <p className="text-sm text-gray-700 leading-relaxed mb-3">
+                {item.guidanceKr || ' '}
+              </p>
+              {item.weaknesses.length > 0 && (
+                <ul className="mb-3 text-xs text-gray-600 list-disc pl-5 space-y-0.5">
+                  {item.weaknesses.map((w, i) => (
+                    <li key={`weak-${item.key}-${i}`}>{w}</li>
+                  ))}
+                </ul>
+              )}
+              {item.phonemeTips.length > 0 && (
+                <div className="mb-3 rounded-lg bg-sky-50 border border-sky-100 px-3 py-2 space-y-1">
+                  {item.phonemeTips.map((tip, i) => (
+                    <p key={`tip-${item.key}-${i}`} className="text-xs text-sky-900 leading-snug">
+                      <span className="font-bold mr-1">{tip.phoneme}</span>
+                      {tip.koreanCue && <span className="mr-1">({tip.koreanCue})</span>}
+                      <span>{tip.tip}</span>
+                    </p>
+                  ))}
+                </div>
+              )}
               <div className="mb-3">
                 <PhonemeAlignment
                   targetText={item.alignment.targetText}
@@ -220,15 +264,23 @@ export default function LearningChatFlow({
                   <button
                     onClick={handleRetry}
                     disabled={busyStep}
-                    className="flex-1 flex items-center justify-center gap-1.5 h-11 bg-white border-2 border-gray-300 hover:border-orange-400 hover:bg-orange-50 text-gray-900 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                    className={`flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-medium rounded-xl transition-colors disabled:opacity-50 ${
+                      primaryAdvance
+                        ? 'bg-white border-2 border-gray-300 hover:border-orange-400 hover:bg-orange-50 text-gray-900'
+                        : 'bg-orange-500 hover:bg-orange-600 text-white border-2 border-orange-500'
+                    }`}
                   >
-                    <RotateCcw size={16} className="text-orange-500" />
+                    <RotateCcw size={16} className={primaryAdvance ? 'text-orange-500' : 'text-white'} />
                     <span>다시 발음하기</span>
                   </button>
                   <button
                     onClick={handleAdvance}
                     disabled={busyStep}
-                    className="flex-1 h-11 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                    className={`flex-1 h-11 text-sm font-medium rounded-xl transition-colors disabled:opacity-50 ${
+                      primaryAdvance
+                        ? 'bg-sky-500 hover:bg-sky-600 text-white'
+                        : 'bg-white border-2 border-gray-300 hover:border-sky-400 hover:bg-sky-50 text-gray-900'
+                    }`}
                   >
                     {isLast ? finalAdvanceLabel : advanceLabel}
                   </button>

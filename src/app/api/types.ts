@@ -75,6 +75,24 @@ export type WrongWord = {
   index: number;
 };
 
+// LLM 이 약점 음소에 대해 제시한 한국식 발음 단서 (아학편 가이드 적용).
+// koreanCue 는 한글 음차, tip 은 입 모양 / 혀 위치 등 추가 발음 요령.
+export type PhonemeTip = {
+  phoneme: string;
+  koreanCue: string;
+  tip: string;
+};
+
+// 종합 피드백에서 추천되는 추가 학습 항목. 단어 / 구 / 문장 셋 중 하나의 kind 를 가진다.
+export type PracticeItem = {
+  text: string;
+  kind: 'WORD' | 'PHRASE' | 'SENTENCE';
+  reason: string;
+};
+
+// 한 번의 녹음 업로드 응답.
+// passed / retryRecommended 는 백엔드의 통과 임계 (app.gamification.pass-threshold) 와
+// LLM 판정을 합쳐 결정한 SSOT 값이라 프론트가 점수만 보고 다시 판단하지 않는다.
 export type RecordingResult = {
   id: number;
   scriptId: number | null;
@@ -86,9 +104,14 @@ export type RecordingResult = {
   canonical: string[];
   peakSoftmax: number[];
   stepScore: number | null;
+  passed: boolean;
+  retryRecommended: boolean;
   guidanceKr: string | null;
+  strengths: string[];
+  weaknesses: string[];
   errors: PhonemeError[];
   wrongWords: WrongWord[];
+  phonemeTips: PhonemeTip[];
   createdAt: string;
 };
 
@@ -99,6 +122,9 @@ export type PhonemeError = {
   canonicalIndex: number | null;
 };
 
+// 챕터 / 세션 종합 피드백.
+// nextPracticeItems 는 LLM 이 약점에 맞춰 추천한 단어 · 구 · 문장 혼합 항목이며,
+// 각 항목은 POST /api/feedback/{id}/retry-word (form 의 word 파라미터) 로 개별 평가된다.
 export type Feedback = {
   id: number;
   scriptId: number | null;
@@ -108,6 +134,9 @@ export type Feedback = {
   weakPhoneme: string | null;
   practiceWord: string | null;
   guidanceKr: string | null;
+  strengths: string[];
+  weaknesses: string[];
+  nextPracticeItems: PracticeItem[];
   errors: PhonemeError[];
   createdAt: string;
 };
@@ -120,12 +149,17 @@ export type FeedbackSummary = {
   createdAt: string;
 };
 
+// 단어 / 구 재시도 평가 응답.
+// correct 는 LLM 의 정성 판정, passed 는 점수 임계 기반, retryRecommended 는 두 신호를 합친 SSOT.
 export type RetryWordResult = {
   correct: boolean;
+  passed: boolean;
+  retryRecommended: boolean;
   perceived: string[];
   canonical: string[];
   score: number;
   guidanceKr: string;
+  phonemeTips: PhonemeTip[];
 };
 
 export type Stats = {

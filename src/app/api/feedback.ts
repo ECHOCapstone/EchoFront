@@ -7,12 +7,22 @@ export type GenerateFeedbackInput = {
   recordingIds: number[];
 };
 
+// retry-word 호출 옵션. word 가 들어가면 종합 피드백 nextPracticeItems 중 그 항목으로 평가하고,
+// 비어 있으면 백엔드가 feedback.practiceWord (또는 폴백 단어) 를 사용한다.
+export type RetryWordOptions = {
+  filename?: string;
+  word?: string;
+};
+
 export const feedbackApi = {
   generate: (input: GenerateFeedbackInput) =>
     apiClient.post<Feedback>('/api/feedback/generate', { json: input }),
-  retryWord: (feedbackId: number, audio: Blob, filename = 'audio.wav') => {
+  retryWord: (feedbackId: number, audio: Blob, options: RetryWordOptions = {}) => {
     const form = new FormData();
-    form.append('audio', audio, filename);
+    form.append('audio', audio, options.filename ?? 'audio.wav');
+    if (options.word != null && options.word !== '') {
+      form.append('word', options.word);
+    }
     return apiClient.post<RetryWordResult>(`/api/feedback/${feedbackId}/retry-word`, { formData: form });
   },
   // 챕터 학습 완료 + EXP/streak 보상 적용. 응답으로 갱신된 사용자 정보를 받는다.

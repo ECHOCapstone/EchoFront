@@ -1,21 +1,21 @@
-// 학습 종료 시점에 노출되는 종합 피드백 + 재연습 단어 흐름.
-// 백엔드의 Feedback 객체를 받아 화면을 채우고, 재녹음 시 /api/feedback/{id}/retry-word 로 즉시 평가.
+// 학습 종료 시점에 노출되는 종합 피드백 + 추가 학습 항목 흐름.
+// 백엔드의 Feedback 을 받아 화면을 채우고, 각 추가 학습 항목은 PracticeItemCard 가 자체적으로 평가한다.
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Check, Sparkles, Trophy, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { Button } from './ui/button';
-import { BotBubble, UserBubble } from './ChatBubble';
-import RecordButton from './RecordButton';
-import { feedbackApi, type Feedback } from '../api';
+import { BotBubble } from './ChatBubble';
+import PracticeItemCard from './learning/PracticeItemCard';
+import { feedbackApi, type Feedback, type PracticeItem } from '../api';
 import { useAuth } from '../auth/useAuth';
-import { useRecorder } from '../hooks/useRecorder';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
+import booExp from '@/assets/boo-pic/BOO12-1.png';
 
 interface FeedbackFlowProps {
   feedback: Feedback;
-  // 재연습 단어 통과 + EXP 팝업 닫기 직후 호출되는 hook. 미지정 시 기본적으로 랭킹으로 이동한다.
+  // 추가 학습 + EXP 팝업 닫기 직후 호출되는 hook. 미지정 시 기본적으로 랭킹으로 이동한다.
   // 트랙 진행 모드 등에서는 이 곳에 다음 챕터 진입 등 도메인별 후속 동작을 주입한다.
   onComplete?: () => void;
   // EXP 팝업의 1차 액션 라벨. 미지정 시 "확인" 으로 노출된다.
@@ -25,12 +25,6 @@ interface FeedbackFlowProps {
   allowCompletion?: boolean;
 }
 
-type Attempt = {
-  key: string;
-  correct: boolean;
-  guidanceKr: string;
-};
-
 export default function FeedbackFlow({
   feedback,
   onComplete,
@@ -38,59 +32,24 @@ export default function FeedbackFlow({
   allowCompletion = true,
 }: FeedbackFlowProps) {
   const navigate = useNavigate();
-  const recorder = useRecorder();
   const { user, refresh } = useAuth();
-  const [attempts, setAttempts] = useState<Attempt[]>([]);
-  const [busy, setBusy] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [showExpPopup, setShowExpPopup] = useState(false);
-  // 사용자가 명시적으로 "약점 음소 한 번 더 연습" 을 시작했는지. true 가 되어야만 단어 박스가 보인다.
+  // 사용자가 명시적으로 추가 학습을 시작했는지. true 가 되어야만 카드 리스트가 노출된다.
   const [retryStarted, setRetryStarted] = useState(false);
   // complete API 응답으로 갱신된 사용자의 exp 와 호출 직전 exp 의 차이.
-  // 백엔드 app.reward.completion-exp 가 SSOT 이므로 프론트는 이 값을 그대로 노출한다.
+  // 백엔드 app.gamification.completion-exp 가 SSOT 이므로 프론트는 이 값을 그대로 노출한다.
   const [expGained, setExpGained] = useState<number | null>(null);
 
-  // null 이면 백엔드가 권장 단어를 결정하지 못한 케이스이므로 박스 자체를 노출하지 않는다.
-  // 매직 fallback ('rabbit') 으로 채우면 백엔드 SSOT 가 깨지므로 의도적으로 빈 값 그대로 둔다.
-  const practiceWord = feedback.practiceWord ?? null;
+  // nextPracticeItems 가 비어 있으면 백엔드가 추천을 만들지 못한 케이스. 카드 자체를 노출하지 않는다.
+  const items: PracticeItem[] = feedback.nextPracticeItems ?? [];
+  const hasItems = items.length > 0;
   const weakPhonemeLabel = feedback.weakPhoneme?.toUpperCase();
   // 점수 구간별 강조 색. 낮은 점수에 무조건 sky 색을 주면 "잘했다" 라는 신호로 오해된다.
   const accuracyColor =
     feedback.accuracy >= 80 ? 'text-sky-600'
     : feedback.accuracy >= 60 ? 'text-amber-500'
     : 'text-red-500';
-
-  const handleStart = async () => {
-    // 정답 판정이 한 번 떨어졌더라도 사용자가 더 또렷하게 다시 발음해 보고 싶어 할 수 있어
-    // 녹음 자체는 항상 허용한다. busy 일 때만 가드한다.
-    if (busy) return;
-    await recorder.start();
-  };
-
-  const handleStop = async () => {
-    if (busy) return;
-    setBusy(true);
-    const result = await recorder.stop();
-    if (!result) {
-      setBusy(false);
-      return;
-    }
-    try {
-      const evaluation = await feedbackApi.retryWord(feedback.id, result.blob, 'retry.wav');
-      setAttempts((prev) => [
-        ...prev,
-        {
-          key: `attempt-${prev.length}`,
-          correct: evaluation.correct,
-          guidanceKr: evaluation.guidanceKr,
-        },
-      ]);
-    } catch (err) {
-      notifyApiError(err, '재연습 평가에 실패했습니다.');
-    } finally {
-      setBusy(false);
-    }
-  };
 
   // EXP 보상 적용은 반드시 백엔드 단일 진입점(POST /api/feedback/{id}/complete) 을 거친다.
   // 응답에 갱신된 사용자 정보가 들어있고, 호출 전 exp 와 비교해 실제 가산량을 산출한다.
@@ -132,15 +91,34 @@ export default function FeedbackFlow({
         )}
       </BotBubble>
 
-      {/* D 옵션: 사용자가 직접 누를 때만 약점 음소 단어 박스를 띄운다.
-          누르기 전에는 짧은 안내 + 시작 버튼만, 누른 다음에는 안내가 단어 박스 안내문으로 바뀐다. */}
-      {practiceWord && !retryStarted && (
+      {(feedback.strengths.length > 0 || feedback.weaknesses.length > 0) && (
+        <BotBubble>
+          {feedback.strengths.length > 0 && (
+            <div className="mb-2">
+              <p className="text-xs font-bold text-green-700 mb-1">잘한 점</p>
+              <ul className="text-sm text-gray-800 list-disc pl-5 space-y-0.5">
+                {feedback.strengths.map((s, i) => <li key={`s-${i}`}>{s}</li>)}
+              </ul>
+            </div>
+          )}
+          {feedback.weaknesses.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-orange-600 mb-1">보완할 점</p>
+              <ul className="text-sm text-gray-800 list-disc pl-5 space-y-0.5">
+                {feedback.weaknesses.map((w, i) => <li key={`w-${i}`}>{w}</li>)}
+              </ul>
+            </div>
+          )}
+        </BotBubble>
+      )}
+
+      {hasItems && !retryStarted && (
         <BotBubble>
           <div className="flex items-center justify-between gap-3">
             <p className="text-gray-800">
               {weakPhonemeLabel
                 ? <>약점 음소 <span className="font-bold text-sky-600">{weakPhonemeLabel}</span> 를 한 번 더 연습해 볼까요?</>
-                : '추천 단어로 한 번 더 연습해 볼까요?'}
+                : '추천 항목으로 한 번 더 연습해 볼까요?'}
             </p>
             <button
               onClick={() => setRetryStarted(true)}
@@ -152,59 +130,21 @@ export default function FeedbackFlow({
         </BotBubble>
       )}
 
-      {practiceWord && retryStarted && (
+      {hasItems && retryStarted && (
         <BotBubble>
           <p className="text-gray-800">
-            아래 단어를 발음해 보세요. 녹음 버튼을 누르고 또렷하게 말해 보세요.
+            아래 단어 · 구 · 문장을 따라 발음해 보세요. 카드마다 녹음하면 즉시 평가가 표시됩니다.
           </p>
         </BotBubble>
       )}
 
-      {attempts.map((attempt) => (
-        <div key={attempt.key} className="space-y-4">
-          <UserBubble>녹음 완료!</UserBubble>
-          <BotBubble>
-            {attempt.correct ? (
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Check size={22} className="text-green-500" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-gray-900 mb-1">정답입니다!</p>
-                  <p className="text-sm text-gray-600">{attempt.guidanceKr}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Sparkles size={22} className="text-orange-500" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-gray-900 mb-1">다시 한 번 시도해 보세요.</p>
-                  <p className="text-sm text-gray-600">{attempt.guidanceKr}</p>
-                </div>
-              </div>
-            )}
-          </BotBubble>
-        </div>
+      {hasItems && retryStarted && items.map((item, i) => (
+        <PracticeItemCard
+          key={`item-${i}-${item.text}`}
+          feedbackId={feedback.id}
+          item={item}
+        />
       ))}
-
-      {/* 단어 박스는 사용자가 "한 번 더 연습하기" 를 눌렀을 때만 노출한다. */}
-      {practiceWord && retryStarted && (
-        <BotBubble>
-          <div className="flex items-center justify-between gap-3 bg-white rounded-xl p-4 border-2 border-sky-100">
-            <p className="text-xl font-bold text-gray-900">{practiceWord}</p>
-            <RecordButton
-              isRecording={recorder.isRecording}
-              busy={busy}
-              onStart={handleStart}
-              onStop={handleStop}
-              idleLabel={attempts.length > 0 ? '다시 발음하기' : '녹음 시작'}
-              variant="inline"
-            />
-          </div>
-        </BotBubble>
-      )}
 
       {/* "학습 완료하고 경험치 획득" 버튼은 진행 중인 학습에서만 노출한다.
           이미 완료한 피드백을 다시 보는 Feedbacks 화면에선 allowCompletion=false 로 숨겨
@@ -225,8 +165,8 @@ export default function FeedbackFlow({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
             <div className="w-full h-48 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl flex items-center justify-center mb-6">
-              <div className="w-32 h-32 rounded-full bg-white shadow-inner flex items-center justify-center">
-                <Trophy size={64} className="text-yellow-500 fill-yellow-300" />
+              <div className="w-32 h-32 rounded-full bg-white shadow-inner flex items-center justify-center overflow-hidden">
+                <img src={booExp} alt="EXP 획득" className="w-full h-full object-contain" />
               </div>
             </div>
             <div className="text-center mb-6">
