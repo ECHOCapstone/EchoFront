@@ -11,7 +11,7 @@
 // 부모는 prompts 가 바뀌면 key 로 컴포넌트를 다시 마운트해 채팅을 초기 상태로 리셋한다.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCcw, Volume2 } from 'lucide-react';
+import { CheckCircle2, Info, RotateCcw, Volume2 } from 'lucide-react';
 import { BotBubble, UserBubble } from '../ChatBubble';
 import PhonemeAlignment from '../PhonemeAlignment';
 import RecordButton from '../RecordButton';
@@ -219,16 +219,40 @@ export default function LearningChatFlow({
           const headline = passed
             ? '통과! 다음으로 넘어가도 좋아요.'
             : retryRecommended
-              ? '재학습이 필요해요. 한 번 더 시도해 볼까요?'
-              : '발음 결과를 확인했어요.';
+              ? '한 번 더 시도해 볼까요?'
+              : '결과를 확인했어요.';
           const headlineColor = passed ? 'text-green-600' : retryRecommended ? 'text-orange-500' : 'text-gray-900';
+          // 통과 / 재학습 권고 상태를 헤드라인 옆 아이콘으로 단번에 인식하게 한다.
+          const HeadlineIcon = passed ? CheckCircle2 : retryRecommended ? Info : null;
+          const headlineIconClass = passed ? 'text-green-500' : 'text-orange-500';
+          // 점수 색은 통과 / 권고 신호와 일치시켜 시각적 redundancy 를 준다.
+          const scoreColor =
+            item.score === null
+              ? 'text-gray-500'
+              : passed
+                ? 'text-green-600'
+                : retryRecommended
+                  ? 'text-orange-500'
+                  : 'text-gray-900';
           // primary CTA 는 passed 면 "다음으로", 아니면 "다시 발음하기".
           const primaryAdvance = passed;
           return (
             <BotBubble key={item.key}>
-              <p className={`text-base font-semibold leading-relaxed mb-1 ${headlineColor}`}>
-                {headline}
-              </p>
+              <div className="flex items-start gap-2 mb-1">
+                {HeadlineIcon && (
+                  <HeadlineIcon size={20} className={`${headlineIconClass} flex-shrink-0 mt-0.5`} />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className={`text-base font-semibold leading-relaxed ${headlineColor}`}>
+                    {headline}
+                  </p>
+                  {item.score !== null && (
+                    <p className={`text-2xl font-bold leading-tight ${scoreColor}`}>
+                      {item.score.toFixed(1)}<span className="text-sm font-medium text-gray-500 ml-1">점</span>
+                    </p>
+                  )}
+                </div>
+              </div>
               <p className="text-sm text-gray-700 leading-relaxed mb-3">
                 {item.guidanceKr || ' '}
               </p>

@@ -3,7 +3,7 @@
 // /api/feedback/{id}/retry-word 호출로 즉시 평가할 수 있다.
 
 import { useState } from 'react';
-import { Check, Sparkles } from 'lucide-react';
+import { CheckCircle2, Info } from 'lucide-react';
 import { BotBubble } from '../ChatBubble';
 import RecordButton from '../RecordButton';
 import { feedbackApi, type PhonemeTip, type PracticeItem } from '../../api';
@@ -102,35 +102,23 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
       </div>
 
       {attempts.map((attempt) => {
-        const headerColor = attempt.passed
-          ? 'text-green-600'
-          : attempt.retryRecommended
-            ? 'text-orange-500'
-            : 'text-gray-900';
-        const headline = attempt.passed
-          ? '통과!'
-          : attempt.retryRecommended
-            ? '한 번 더 시도해 보세요.'
-            : '결과를 확인했어요.';
-        const iconBg = attempt.passed
-          ? 'bg-green-100'
-          : attempt.retryRecommended
-            ? 'bg-orange-100'
-            : 'bg-gray-100';
-        const Icon = attempt.passed ? Check : Sparkles;
-        const iconColor = attempt.passed
-          ? 'text-green-500'
-          : attempt.retryRecommended
-            ? 'text-orange-500'
-            : 'text-gray-500';
+        const passed = attempt.passed;
+        const retry = attempt.retryRecommended;
+        const headerColor = passed ? 'text-green-600' : retry ? 'text-orange-500' : 'text-gray-900';
+        const headline = passed ? '통과!' : retry ? '한 번 더 시도해 보세요.' : '결과를 확인했어요.';
+        const iconBg = passed ? 'bg-green-100' : retry ? 'bg-orange-100' : 'bg-gray-100';
+        const Icon = passed ? CheckCircle2 : Info;
+        const iconColor = passed ? 'text-green-500' : retry ? 'text-orange-500' : 'text-gray-500';
+        const scoreColor = passed ? 'text-green-600' : retry ? 'text-orange-500' : 'text-gray-900';
         return (
           <div key={attempt.key} className="mt-3 flex items-start gap-3">
             <div className={`w-10 h-10 ${iconBg} rounded-full flex items-center justify-center flex-shrink-0`}>
               <Icon size={22} className={iconColor} />
             </div>
-            <div className="min-w-0">
-              <p className={`text-base font-bold mb-1 ${headerColor}`}>
-                {headline} <span className="text-sm font-medium text-gray-500">· {attempt.score.toFixed(1)}점</span>
+            <div className="min-w-0 flex-1">
+              <p className={`text-base font-bold ${headerColor}`}>{headline}</p>
+              <p className={`text-2xl font-bold leading-tight mb-1 ${scoreColor}`}>
+                {attempt.score.toFixed(1)}<span className="text-sm font-medium text-gray-500 ml-1">점</span>
               </p>
               {attempt.guidanceKr && (
                 <p className="text-sm text-gray-700 leading-relaxed">{attempt.guidanceKr}</p>
