@@ -19,6 +19,7 @@ import { useRecorder } from '../../hooks/useRecorder';
 import { useTtsPlayer } from '../../hooks/useTtsPlayer';
 import type { PhonemeError, PhonemeTip, RecordingResult, WrongWord } from '../../api';
 import { notifyApiError } from '../../lib/notify';
+import MicPermissionModal from './MicPermissionModal';
 
 // 채팅 흐름에 노출되는 한 단계. id 는 부모 도메인 (LearningStep / SessionSentence) 의 식별자를 그대로 쓴다.
 export interface LearningPrompt {
@@ -86,6 +87,18 @@ export default function LearningChatFlow({
   const [latestRecordingByPromptId, setLatestRecordingByPromptId] = useState<Record<number, number>>({});
   const [busyStep, setBusyStep] = useState(false);
   const [doneSignaled, setDoneSignaled] = useState(false);
+  // 사용자가 권한 모달을 "나중에" 로 닫았는지. status 가 다시 denied 로 떨어져도 같은 세션 동안은 안 띄운다.
+  const [micModalDismissed, setMicModalDismissed] = useState(false);
+
+  // 권한 상태가 변하면 dismiss 플래그를 초기화해서 사용자가 권한을 허용한 뒤 다시 막혔을 때 다시 안내가 뜨도록 한다.
+  useEffect(() => {
+    if (recorder.status === 'idle' || recorder.status === 'recording') {
+      setMicModalDismissed(false);
+    }
+  }, [recorder.status]);
+  const showMicModal =
+    !micModalDismissed &&
+    (recorder.status === 'denied' || recorder.status === 'unsupported');
 
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -198,6 +211,17 @@ export default function LearningChatFlow({
 
   return (
     <>
+      {showMicModal && (
+        <MicPermissionModal
+          reason={recorder.status === 'unsupported' ? 'unsupported' : 'denied'}
+          errorMessage={recorder.errorMessage}
+          onRetry={() => {
+            setMicModalDismissed(false);
+            void recorder.start();
+          }}
+          onDismiss={() => setMicModalDismissed(true)}
+        />
+      )}
       {chat.map((item, idx) => {
         if (item.kind === 'user-record') {
           const scoreLabel = item.score !== null ? ` · ${item.score.toFixed(1)}점` : '';

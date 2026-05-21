@@ -2,13 +2,14 @@
 // 단어 / 구 / 문장 셋 중 하나의 kind 를 가지며, 카드 안에 직접 RecordButton 을 둬서
 // /api/feedback/{id}/retry-word 호출로 즉시 평가할 수 있다.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, Info } from 'lucide-react';
 import { BotBubble } from '../ChatBubble';
 import RecordButton from '../RecordButton';
 import { feedbackApi, type PhonemeTip, type PracticeItem } from '../../api';
 import { useRecorder } from '../../hooks/useRecorder';
 import { notifyApiError } from '../../lib/notify';
+import MicPermissionModal from './MicPermissionModal';
 
 interface PracticeItemCardProps {
   feedbackId: number;
@@ -41,6 +42,16 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
   const recorder = useRecorder();
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [busy, setBusy] = useState(false);
+  // 학습 도중 권한 모달을 닫으면 다음 권한 상태 변화 (정상 / recording) 가 올 때까지 다시 안 띄운다.
+  const [micModalDismissed, setMicModalDismissed] = useState(false);
+  useEffect(() => {
+    if (recorder.status === 'idle' || recorder.status === 'recording') {
+      setMicModalDismissed(false);
+    }
+  }, [recorder.status]);
+  const showMicModal =
+    !micModalDismissed &&
+    (recorder.status === 'denied' || recorder.status === 'unsupported');
 
   const handleStart = async () => {
     if (busy) return;
@@ -80,7 +91,19 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
   };
 
   return (
-    <BotBubble>
+    <>
+      {showMicModal && (
+        <MicPermissionModal
+          reason={recorder.status === 'unsupported' ? 'unsupported' : 'denied'}
+          errorMessage={recorder.errorMessage}
+          onRetry={() => {
+            setMicModalDismissed(false);
+            void recorder.start();
+          }}
+          onDismiss={() => setMicModalDismissed(true)}
+        />
+      )}
+      <BotBubble>
       <div className="bg-white rounded-xl p-4 border-2 border-sky-100 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
@@ -138,6 +161,7 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
           </div>
         );
       })}
-    </BotBubble>
+      </BotBubble>
+    </>
   );
 }
