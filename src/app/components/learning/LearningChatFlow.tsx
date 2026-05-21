@@ -17,7 +17,7 @@ import PhonemeAlignment from '../PhonemeAlignment';
 import RecordButton from '../RecordButton';
 import { useRecorder } from '../../hooks/useRecorder';
 import { useTtsPlayer } from '../../hooks/useTtsPlayer';
-import type { PhonemeError, PhonemeTip, RecordingResult, WrongWord } from '../../api';
+import type { PhonemeError, PhonemeTip, RecordingResult, SpeechRate, WrongWord } from '../../api';
 import { notifyApiError } from '../../lib/notify';
 import MicPermissionModal from './MicPermissionModal';
 
@@ -66,6 +66,8 @@ type ChatItem =
       strengths: string[];
       weaknesses: string[];
       phonemeTips: PhonemeTip[];
+      // 모델 서버 발화 속도 분류 (FAST / NORMAL / SLOW). FAST 일 때만 사용자 안내 배지를 띄운다.
+      speechRate: SpeechRate;
       alignment: AlignmentSnapshot;
     };
 
@@ -163,6 +165,7 @@ export default function LearningChatFlow({
           strengths: uploaded.strengths ?? [],
           weaknesses: uploaded.weaknesses ?? [],
           phonemeTips: uploaded.phonemeTips ?? [],
+          speechRate: uploaded.speechRate ?? 'NORMAL',
           alignment: {
             targetText: currentPrompt.target,
             perceived: uploaded.perceived,
@@ -280,6 +283,12 @@ export default function LearningChatFlow({
               <p className="text-sm text-gray-700 leading-relaxed mb-3">
                 {item.guidanceKr || ' '}
               </p>
+              {item.speechRate === 'FAST' && (
+                <div className="mb-3 inline-flex items-center gap-1 rounded-full bg-yellow-100 border border-yellow-200 px-2.5 py-1 text-xs font-medium text-yellow-800">
+                  <span>⏱</span>
+                  <span>조금 천천히 발음해 보세요</span>
+                </div>
+              )}
               {item.weaknesses.length > 0 && (
                 <ul className="mb-3 text-xs text-gray-600 list-disc pl-5 space-y-0.5">
                   {item.weaknesses.map((w, i) => (

@@ -90,6 +90,9 @@ export type PracticeItem = {
   reason: string;
 };
 
+// 모델 서버가 분류한 발화 속도. FAST 이면 "조금 천천히" 안내 배지를 노출한다.
+export type SpeechRate = 'FAST' | 'NORMAL' | 'SLOW';
+
 // 한 번의 녹음 업로드 응답.
 // passed / retryRecommended 는 백엔드의 통과 임계 (app.gamification.pass-threshold) 와
 // LLM 판정을 합쳐 결정한 SSOT 값이라 프론트가 점수만 보고 다시 판단하지 않는다.
@@ -112,6 +115,7 @@ export type RecordingResult = {
   errors: PhonemeError[];
   wrongWords: WrongWord[];
   phonemeTips: PhonemeTip[];
+  speechRate: SpeechRate;
   createdAt: string;
 };
 
