@@ -8,6 +8,9 @@ dist/
 .env
 .env.*
 
+# docs
+docs/
+
 # IDE
 .vscode/
 .idea/

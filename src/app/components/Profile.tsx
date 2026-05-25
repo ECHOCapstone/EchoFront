@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, FileText, Lock, LogOut, Pencil, User, UserX } from 'lucide-react';
+import { Bell, FileText, Lock, LogOut, Pencil, UserX } from 'lucide-react';
+import booProfile from '@/assets/boo-pic/BOO23.png';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import Footer from './Footer';
@@ -63,8 +64,8 @@ export default function Profile() {
         <StatusHeader />
 
         <div className="text-center mb-8">
-          <div className="w-24 h-24 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User size={48} className="text-sky-500" />
+          <div className="w-24 h-24 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+            <img src={booProfile} alt="프로필" className="w-full h-full object-contain" />
           </div>
           <div className="flex items-center justify-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900">{nickname}</h1>

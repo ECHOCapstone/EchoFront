@@ -4,6 +4,7 @@ import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
+import booMain from '@/assets/boo-pic/BOO10-1.png';
 
 export default function Main() {
   const navigate = useNavigate();
@@ -22,18 +23,28 @@ export default function Main() {
 
         {/* 두 학습 입구. 카드 안 콘텐츠가 아이콘 + 제목 + 한 줄 설명 정도라 h-36 이 콘텐츠와 균형이 맞는다. */}
         <div className="space-y-4">
-          <button
-            onClick={() => navigate(paths.tracks)}
-            className="w-full h-36 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white shadow-lg rounded-3xl flex items-center gap-5 px-6 transition-colors text-left"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
-              <BookOpen size={32} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-2xl font-bold mb-1">학습 트랙</div>
-              <div className="text-sm opacity-90 leading-relaxed">트랙을 골라 챕터별로 차근차근 익혀요</div>
-            </div>
-          </button>
+          {/* 학습 트랙 카드 위에 BOO 일러스트를 절대 위치로 얹는다.
+              pointer-events-none 으로 카드 클릭은 그대로 통과시킨다. */}
+          <div className="relative">
+            <button
+              onClick={() => navigate(paths.tracks)}
+              className="w-full h-36 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white shadow-lg rounded-3xl flex items-center gap-5 px-6 transition-colors text-left"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <BookOpen size={32} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-2xl font-bold mb-1">학습 트랙</div>
+                <div className="text-sm opacity-90 leading-relaxed">트랙을 골라 챕터별로<br />차근차근 익혀요</div>
+              </div>
+            </button>
+            <img
+              src={booMain}
+              alt=""
+              aria-hidden
+              className="absolute -right-2 bottom-1 w-48 h-48 object-contain pointer-events-none"
+            />
+          </div>
 
           <button
             onClick={() => navigate(paths.customLearning)}
