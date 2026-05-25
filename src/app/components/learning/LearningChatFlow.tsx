@@ -371,13 +371,18 @@ export default function LearningChatFlow({
               )}
             </div>
             {isPromptActive && (
-              <RecordButton
-                isRecording={recorder.isRecording}
-                busy={busyStep}
-                onStart={handleStartRecording}
-                onStop={handleStopRecording}
-                busyLabel="업로드 중..."
-              />
+              <>
+                <p className="mb-2 text-xs text-gray-500 leading-snug">
+                  💡 카운트다운이 끝나면 또렷하고 <span className="font-semibold text-gray-700">크게</span> 발음해 주세요. 조용한 곳일수록 인식이 정확해요.
+                </p>
+                <RecordButton
+                  isRecording={recorder.isRecording}
+                  busy={busyStep}
+                  onStart={handleStartRecording}
+                  onStop={handleStopRecording}
+                  busyLabel="업로드 중..."
+                />
+              </>
             )}
           </BotBubble>
         );
