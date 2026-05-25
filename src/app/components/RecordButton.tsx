@@ -3,19 +3,22 @@
 // 상태별 라벨 / 스타일을 한 곳에서 관리해 PronunciationPractice / SessionDetail / FeedbackFlow
 // 어디서든 동일 동작과 시각 언어를 보장한다.
 //   idle                          → idleLabel
-//   armed (사용자 클릭 직후)      → 카운트다운 (2 → 1) + 큰 숫자 + 노랑 + ⏸ — onStart 호출 전이라 mic 미동작
+//   armed (사용자 클릭 직후)      → 풀스크린 카운트다운 오버레이 (2 → 1) — onStart 호출 전이라 mic 미동작.
+//                                   화면 전체가 흐려지며 큰 숫자가 표시되어 "지금부터 발음" 시점이 명확.
 //   recording (priming)           → 직후 0.4초 동안 "잠시만요..." (mic stream 워밍업 흡수)
 //   recording (primed)            → 빨강 펄스 + recordingLabel — 이때부터 발음
 //   busy                          → busyLabel
 //
 // 카운트다운이 끝나야 onStart() 가 호출되므로 카운트다운 중에는 mic 가 켜지지 않아
-// 학습자가 미리 발음해도 캡쳐되지 않는다. 학습자에게 "지금부터 발음" 시점을 강하게 알린다.
+// 학습자가 미리 발음해도 캡쳐되지 않는다. 오버레이는 portal 로 body 에 마운트되어
+// 부모 컨테이너의 overflow / z-index 와 무관하게 항상 최상위에 표시된다.
 //
 // variant 는 형태 차이만 통제한다.
 //   'block'  : 전체 너비, 큰 버튼 (채팅 step prompt 안에 사용)
 //   'inline' : 폭 자동, 작은 버튼 (재연습 단어 박스 등 인라인 액션에 사용)
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Mic, Pause } from 'lucide-react';
 
 export type RecordButtonVariant = 'block' | 'inline';
@@ -123,15 +126,33 @@ export default function RecordButton({
       : 'text-gray-600';
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={busy || inCountdown}
-      className={`${VARIANT_CLASS[variant]} ${stateClass}`}
-    >
-      <Icon size={iconSize} className={iconClass} />
-      <span className={inCountdown ? 'text-2xl font-bold text-amber-700 leading-none' : ''}>
-        {inCountdown ? `잠시 후 시작... ${label}` : label}
-      </span>
-    </button>
+    <>
+      <button
+        onClick={handleClick}
+        disabled={busy || inCountdown}
+        className={`${VARIANT_CLASS[variant]} ${stateClass}`}
+      >
+        <Icon size={iconSize} className={iconClass} />
+        <span className={inCountdown ? 'text-base font-semibold text-amber-700 leading-none' : ''}>
+          {inCountdown ? '잠시 후 시작합니다' : label}
+        </span>
+      </button>
+      {inCountdown && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/55 backdrop-blur-md"
+            role="dialog"
+            aria-live="polite"
+            aria-label="녹음 준비 카운트다운"
+          >
+            <p className="mb-4 text-sm text-white/80 font-medium tracking-wide">잠시 후 발음을 시작하세요</p>
+            <div className="text-[8rem] font-bold text-amber-300 leading-none drop-shadow-lg tabular-nums">
+              {countdown}
+            </div>
+            <p className="mt-6 text-xs text-white/60">또렷하고 크게 발음해 주세요</p>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
