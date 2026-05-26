@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import { createBrowserRouter } from 'react-router';
 import Login from './components/Login';
 import SignUp from './components/SignUp';
+import OAuthCallback from './components/OAuthCallback';
 import Main from './components/Main';
 import Stats from './components/Stats';
 import Profile from './components/Profile';
@@ -24,6 +25,7 @@ const guard = (Component: ComponentType) => () => (
 export const router = createBrowserRouter([
   { path: '/', Component: Login },
   { path: '/signup', Component: SignUp },
+  { path: '/oauth/callback', Component: OAuthCallback },
   { path: '/main', Component: guard(Main) },
   { path: '/tracks', Component: guard(TrackList) },
   { path: '/tracks/:trackId', Component: guard(TrackOverview) },

@@ -21,6 +21,8 @@ function buildPracticePath({ scriptId, trackId, chapterIndex }: PracticeQuery): 
 export const paths = {
   login: '/',
   signup: '/signup',
+  // 백엔드가 OAuth2 성공 시 #token=<JWT>&expiresIn=<sec> fragment 를 실어 redirect 하는 콜백 경로.
+  oauthCallback: '/oauth/callback',
   main: '/main',
   tracks: '/tracks',
   trackOverview: (trackId: number) => `/tracks/${trackId}`,

@@ -24,7 +24,8 @@ export type AuthContextValue = {
   isAuthenticated: boolean;
   login: (input: LoginInput) => Promise<User>;
   signup: (input: SignupInput) => Promise<User>;
-  loginWithGoogleDemo: () => Promise<User>;
+  // OAuth2 콜백 핸들러가 부르는 진입점. 토큰만 받아 me() 로 사용자 정보를 마저 채운다.
+  acceptOAuthToken: (accessToken: string) => Promise<User>;
   logout: () => void;
   refresh: () => Promise<void>;
 };
@@ -82,9 +83,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applyToken]
   );
 
-  const loginWithGoogleDemo = useCallback<AuthContextValue['loginWithGoogleDemo']>(
-    async () => applyToken(await authApi.demoGoogleLogin()),
-    [applyToken]
+  // OAuth2 콜백은 access token 만 fragment 로 받으므로 me() 로 사용자 정보를 별도 조회한다.
+  // 토큰을 먼저 저장해야 me() 가 Authorization 헤더를 채울 수 있다.
+  const acceptOAuthToken = useCallback<AuthContextValue['acceptOAuthToken']>(
+    async (accessToken) => {
+      setAccessToken(accessToken);
+      const user = await authApi.me();
+      setState({ status: 'authenticated', user });
+      return user;
+    },
+    []
   );
 
   const logout = useCallback(() => {
@@ -99,11 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: state.status === 'authenticated',
       login,
       signup,
-      loginWithGoogleDemo,
+      acceptOAuthToken,
       logout,
       refresh,
     }),
-    [state, login, signup, loginWithGoogleDemo, logout, refresh]
+    [state, login, signup, acceptOAuthToken, logout, refresh]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -8,10 +8,21 @@ import Footer from './Footer';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
+import { getGoogleOAuthStartUrl } from '../api/auth';
+
+// 백엔드 OAuth2 실패 핸들러가 붙이는 ?oauthError=<code> 쿼리를 사용자 친화적 한국어 메시지로 매핑한다.
+// 백엔드와 코드 식별자만 공유하면 되므로 메시지는 프론트 SSOT 으로 둔다.
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  missing_token: 'Google 로그인 응답에서 토큰을 찾지 못했습니다. 다시 시도해 주세요.',
+  session_failed: 'Google 로그인 후 사용자 정보를 불러오지 못했습니다. 다시 시도해 주세요.',
+  invalid_user_info: 'Google 계정 정보가 올바르지 않습니다.',
+  invalid_email: 'Google 계정 이메일을 확인할 수 없습니다.',
+};
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, loginWithGoogleDemo, isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { login, isAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -22,6 +33,16 @@ export default function Login() {
   useEffect(() => {
     if (isAuthenticated) navigate(paths.main, { replace: true });
   }, [isAuthenticated, navigate]);
+
+  // 백엔드 OAuth2 실패 redirect 또는 OAuthCallback 의 fallback 으로 들어온 에러를 한 번만 알린다.
+  useEffect(() => {
+    const code = searchParams.get('oauthError');
+    if (!code) return;
+    const message = OAUTH_ERROR_MESSAGES[code] ?? 'Google 로그인에 실패했습니다.';
+    alert(message);
+    // 같은 메시지가 새로고침/뒤로가기로 반복되지 않게 쿼리를 정리한다.
+    window.history.replaceState(null, '', paths.login);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,21 +58,15 @@ export default function Login() {
     }
   };
 
-  const handleSocialLogin = async (provider: string) => {
+  const handleSocialLogin = (provider: string) => {
     if (provider !== 'Google') {
       alert(`${provider} 로그인은 아직 준비 중입니다.`);
       return;
     }
     if (submitting) return;
-    setSubmitting(true);
-    try {
-      await loginWithGoogleDemo();
-      navigate(paths.main, { replace: true });
-    } catch (err) {
-      notifyApiError(err, '소셜 로그인에 실패했습니다.');
-    } finally {
-      setSubmitting(false);
-    }
+    // Google OAuth2 는 백엔드 → Google → 백엔드 → 프론트 redirect 흐름이라 페이지 자체를 navigate 한다.
+    // setSubmitting 으로 시각 표시는 가능하지만, navigate 직후 새 페이지로 이동하므로 굳이 두지 않는다.
+    window.location.href = getGoogleOAuthStartUrl();
   };
 
   return (
