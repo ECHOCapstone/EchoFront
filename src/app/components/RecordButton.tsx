@@ -3,15 +3,16 @@
 // 상태별 라벨 / 스타일을 한 곳에서 관리해 PronunciationPractice / SessionDetail / FeedbackFlow
 // 어디서든 동일 동작과 시각 언어를 보장한다.
 //   idle                          → idleLabel
-//   armed (사용자 클릭 직후)      → 풀스크린 카운트다운 오버레이 (2 → 1) — onStart 호출 전이라 mic 미동작.
-//                                   화면 전체가 흐려지며 큰 숫자가 표시되어 "지금부터 발음" 시점이 명확.
-//   recording                     → 빨강 펄스 + recordingLabel — 카운트다운으로 시점 가이드를 이미 했으므로
-//                                   추가 priming 없이 바로 본 녹음 톤으로 진입한다.
+//   armed (사용자 클릭 직후)      → 풀스크린 카운트다운 오버레이 (2 → 1).
+//                                   이때 onStart() 도 이미 호출되어 mic stream 이 워밍업되고 캡쳐 중.
+//                                   사용자가 0 을 보고 발음해도 onset 자음이 잘리지 않는다.
+//   recording                     → 빨강 펄스 + recordingLabel — 카운트다운 종료 후 본 녹음 라벨로 전환.
 //   busy                          → busyLabel
 //
-// 카운트다운이 끝나야 onStart() 가 호출되므로 카운트다운 중에는 mic 가 켜지지 않아
-// 학습자가 미리 발음해도 캡쳐되지 않는다. 오버레이는 portal 로 body 에 마운트되어
-// 부모 컨테이너의 overflow / z-index 와 무관하게 항상 최상위에 표시된다.
+// 카운트다운은 "지금부터 본격적으로 발음" 시점을 시각으로 강하게 알려주는 가이드 역할.
+// mic stream 은 카운트다운 시작과 함께 켜져 있어 시점 직후 발음에 안정적으로 반응한다.
+// 오버레이는 portal 로 body 에 마운트되어 부모 컨테이너의 overflow / z-index 와 무관하게
+// 항상 최상위에 표시된다.
 //
 // variant 는 형태 차이만 통제한다.
 //   'block'  : 전체 너비, 큰 버튼 (채팅 step prompt 안에 사용)
@@ -34,7 +35,8 @@ interface RecordButtonProps {
   variant?: RecordButtonVariant;
 }
 
-// 카운트다운 시작 값. 1초씩 감소해 0 에 도달하면 실제 onStart 호출. 너무 길면 답답, 너무 짧으면 약하다.
+// 카운트다운 시작 값. 1초씩 감소해 0 에 도달하면 본 녹음 라벨로 전환된다.
+// onStart 는 카운트다운 시작 시점에 이미 호출되므로 mic 는 카운트다운 내내 켜져 있다.
 const COUNTDOWN_FROM = 2;
 
 const VARIANT_CLASS: Record<RecordButtonVariant, string> = {
@@ -54,19 +56,18 @@ export default function RecordButton({
   busyLabel,
   variant = 'block',
 }: RecordButtonProps) {
-  // 카운트다운 남은 초. null = 카운트다운 비활성, 0 보다 크면 "기다리는" 단계.
+  // 카운트다운 남은 초. null = 카운트다운 비활성, 0 보다 크면 "발음 준비" 단계 (단 mic 는 이미 켜짐).
   const [countdown, setCountdown] = useState<number | null>(null);
 
   // onStart 가 매 렌더 새 함수로 들어와도 effect 가 무한 루프에 빠지지 않도록 최신 참조만 유지한다.
   const onStartRef = useRef(onStart);
   useEffect(() => { onStartRef.current = onStart; }, [onStart]);
 
-  // 카운트다운 진행. 0 도달 시 onStart 호출하고 자기 자신을 비활성화한다.
+  // 카운트다운 1초씩 감소. 0 에 도달하면 카운트다운 종료 — onStart 는 이미 시작 시점에 호출됐다.
   useEffect(() => {
     if (countdown === null) return;
     if (countdown === 0) {
       setCountdown(null);
-      onStartRef.current();
       return;
     }
     const t = setTimeout(() => setCountdown((c) => (c ?? 1) - 1), 1000);
@@ -80,12 +81,17 @@ export default function RecordButton({
       return;
     }
     if (inCountdown) return; // 카운트다운 중 중복 클릭 무시
+    // mic stream 워밍업 latency 를 카운트다운 동안 흡수하기 위해 onStart 를 먼저 호출하고
+    // 그 다음 시각 카운트다운을 시작한다.
+    onStartRef.current();
     setCountdown(COUNTDOWN_FROM);
   };
 
   const iconSize = variant === 'block' ? 20 : 18;
+  // 카운트다운 동안 mic 는 이미 켜져 있지만 사용자에게는 "준비" 상태로 보여야 하므로 sky 톤.
+  // 카운트다운이 끝나면 빨강 펄스로 "본 녹음" 을 강조한다.
   const stateClass = inCountdown
-    ? 'border-amber-500 bg-amber-50 animate-pulse'
+    ? 'border-sky-400 bg-sky-50 animate-pulse'
     : isRecording
       ? 'border-red-500 bg-red-50 animate-pulse'
       : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50';
@@ -100,7 +106,7 @@ export default function RecordButton({
 
   const Icon = inCountdown ? Pause : Mic;
   const iconClass = inCountdown
-    ? 'text-amber-600'
+    ? 'text-sky-600'
     : isRecording
       ? 'text-red-500 animate-pulse'
       : 'text-gray-600';
@@ -113,23 +119,23 @@ export default function RecordButton({
         className={`${VARIANT_CLASS[variant]} ${stateClass}`}
       >
         <Icon size={iconSize} className={iconClass} />
-        <span className={inCountdown ? 'text-base font-semibold text-amber-700 leading-none' : ''}>
+        <span className={inCountdown ? 'text-base font-semibold text-sky-700 leading-none' : ''}>
           {inCountdown ? '잠시 후 시작합니다' : label}
         </span>
       </button>
       {inCountdown && typeof document !== 'undefined' &&
         createPortal(
           <div
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/55 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-sky-950/60 backdrop-blur-md"
             role="dialog"
             aria-live="polite"
             aria-label="녹음 준비 카운트다운"
           >
-            <p className="mb-4 text-sm text-white/80 font-medium tracking-wide">잠시 후 발음을 시작하세요</p>
-            <div className="text-[8rem] font-bold text-amber-300 leading-none drop-shadow-lg tabular-nums">
+            <p className="mb-4 text-sm text-sky-100/90 font-medium tracking-wide">잠시 후 발음을 시작하세요</p>
+            <div className="text-[8rem] font-bold text-sky-300 leading-none drop-shadow-lg tabular-nums">
               {countdown}
             </div>
-            <p className="mt-6 text-xs text-white/60">또렷하고 크게 발음해 주세요</p>
+            <p className="mt-6 text-xs text-sky-100/70">또렷하고 크게 발음해 주세요</p>
           </div>,
           document.body,
         )}
