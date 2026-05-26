@@ -5,8 +5,8 @@
 //   idle                          → idleLabel
 //   armed (사용자 클릭 직후)      → 풀스크린 카운트다운 오버레이 (2 → 1) — onStart 호출 전이라 mic 미동작.
 //                                   화면 전체가 흐려지며 큰 숫자가 표시되어 "지금부터 발음" 시점이 명확.
-//   recording (priming)           → 직후 0.4초 동안 "잠시만요..." (mic stream 워밍업 흡수)
-//   recording (primed)            → 빨강 펄스 + recordingLabel — 이때부터 발음
+//   recording                     → 빨강 펄스 + recordingLabel — 카운트다운으로 시점 가이드를 이미 했으므로
+//                                   추가 priming 없이 바로 본 녹음 톤으로 진입한다.
 //   busy                          → busyLabel
 //
 // 카운트다운이 끝나야 onStart() 가 호출되므로 카운트다운 중에는 mic 가 켜지지 않아
@@ -36,8 +36,6 @@ interface RecordButtonProps {
 
 // 카운트다운 시작 값. 1초씩 감소해 0 에 도달하면 실제 onStart 호출. 너무 길면 답답, 너무 짧으면 약하다.
 const COUNTDOWN_FROM = 2;
-// 실제 녹음 시작 직후 mic stream 안정화 latency 흡수용 짧은 priming. 0.4초면 충분 (이미 카운트다운으로 시점 가이드).
-const PRIMING_MS = 400;
 
 const VARIANT_CLASS: Record<RecordButtonVariant, string> = {
   block:
@@ -58,8 +56,6 @@ export default function RecordButton({
 }: RecordButtonProps) {
   // 카운트다운 남은 초. null = 카운트다운 비활성, 0 보다 크면 "기다리는" 단계.
   const [countdown, setCountdown] = useState<number | null>(null);
-  // 녹음 막 시작된 직후의 priming flag. PRIMING_MS 후 true 가 되어 본 녹음 톤으로 전환된다.
-  const [primed, setPrimed] = useState(false);
 
   // onStart 가 매 렌더 새 함수로 들어와도 effect 가 무한 루프에 빠지지 않도록 최신 참조만 유지한다.
   const onStartRef = useRef(onStart);
@@ -77,16 +73,6 @@ export default function RecordButton({
     return () => clearTimeout(t);
   }, [countdown]);
 
-  // 녹음 시작 / 종료에 따라 priming flag 를 재설정한다.
-  useEffect(() => {
-    if (!isRecording) {
-      setPrimed(false);
-      return;
-    }
-    const t = setTimeout(() => setPrimed(true), PRIMING_MS);
-    return () => clearTimeout(t);
-  }, [isRecording]);
-
   const inCountdown = countdown !== null && countdown > 0;
   const handleClick = () => {
     if (isRecording) {
@@ -101,17 +87,13 @@ export default function RecordButton({
   const stateClass = inCountdown
     ? 'border-amber-500 bg-amber-50 animate-pulse'
     : isRecording
-      ? primed
-        ? 'border-red-500 bg-red-50 animate-pulse'
-        : 'border-amber-400 bg-amber-50'
+      ? 'border-red-500 bg-red-50 animate-pulse'
       : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50';
 
   const label = inCountdown
     ? `${countdown}`
     : isRecording
-      ? primed
-        ? recordingLabel
-        : '잠시만요...'
+      ? recordingLabel
       : busy && busyLabel
         ? busyLabel
         : idleLabel;
@@ -120,9 +102,7 @@ export default function RecordButton({
   const iconClass = inCountdown
     ? 'text-amber-600'
     : isRecording
-      ? primed
-        ? 'text-red-500 animate-pulse'
-        : 'text-amber-500'
+      ? 'text-red-500 animate-pulse'
       : 'text-gray-600';
 
   return (
