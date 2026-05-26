@@ -85,19 +85,11 @@ export default function Profile() {
             <p className="text-sm text-gray-600 mb-1">이메일</p>
             <p className="text-gray-900 font-medium">{email}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">닉네임</p>
-              <p className="text-gray-900 font-medium">{nickname}</p>
-            </div>
-            <button
-              onClick={openNicknameDialog}
-              disabled={updatingNickname}
-              className="flex items-center gap-1 px-3 h-9 bg-white border-2 border-gray-300 hover:border-sky-500 hover:bg-sky-50 text-gray-900 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-            >
-              <Pencil size={14} className="text-gray-600" />
-              <span>{updatingNickname ? '저장 중...' : '변경'}</span>
-            </button>
+          <div className="bg-gray-50 rounded-xl p-4">
+            <p className="text-sm text-gray-600 mb-1">닉네임</p>
+            <p className="text-gray-900 font-medium">
+              {updatingNickname ? '저장 중...' : nickname}
+            </p>
           </div>
         </div>
 
