@@ -65,8 +65,8 @@ export default function TrackOverview() {
         {track && (
           <>
             <div className="flex items-start gap-3 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center flex-shrink-0 mt-1">
-                <BookOpen size={28} className="text-sky-500" />
+              <div className="w-14 h-14 rounded-2xl bg-[#DFEEFF] flex items-center justify-center flex-shrink-0 mt-1">
+                <BookOpen size={28} className="text-[#77B5FE]" />
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">{track.title}</h1>
@@ -77,7 +77,7 @@ export default function TrackOverview() {
             <Button
               onClick={() => enterChapter(0)}
               disabled={track.chapters.length === 0}
-              className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white text-lg font-bold rounded-2xl mb-6 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full h-14 bg-[#77B5FE] hover:bg-[#65A3EC] text-white text-lg font-bold rounded-2xl mb-6 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Play size={20} className="fill-white" />
               <span>처음부터 시작</span>
@@ -92,7 +92,7 @@ export default function TrackOverview() {
                 <button
                   key={chapter.scriptId}
                   onClick={() => enterChapter(index)}
-                  className="w-full text-left bg-white border-2 border-gray-200 hover:border-sky-500 hover:bg-sky-50 rounded-2xl p-4 transition-colors flex items-center gap-4"
+                  className="w-full text-left bg-white border-2 border-gray-200 hover:border-[#77B5FE] hover:bg-[#F0F6FF] rounded-2xl p-4 transition-colors flex items-center gap-4"
                 >
                   <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 font-bold text-gray-700">
                     {index + 1}

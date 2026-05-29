@@ -74,7 +74,7 @@ export default function Login() {
       <div className="w-full">
         {/* 로고 */}
         <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold text-sky-500">ECHO!</h1>
+          <h1 className="text-6xl font-bold text-[#77B5FE]">ECHO!</h1>
         </div>
 
         {/* 로그인 폼 */}
@@ -89,7 +89,7 @@ export default function Login() {
                 placeholder="아이디를 입력하세요"
                 value={formData.id}
                 onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                className="h-12 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                className="h-12 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
               />
             </div>
 
@@ -103,7 +103,7 @@ export default function Login() {
                   placeholder="비밀번호를 입력하세요"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="h-12 pr-10 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                  className="h-12 pr-10 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
                 />
                 <button
                   type="button"
@@ -120,7 +120,7 @@ export default function Login() {
           <Button
             type="submit"
             disabled={submitting || !formData.id.trim() || !formData.password}
-            className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium disabled:opacity-60"
+            className="w-full h-12 bg-[#77B5FE] hover:bg-[#65A3EC] text-white font-medium disabled:opacity-60"
           >
             {submitting ? '로그인 중...' : '로그인'}
           </Button>
@@ -141,7 +141,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => handleSocialLogin('Google')}
-                className="w-14 h-14 rounded-full border-2 border-gray-300 hover:border-sky-500 flex items-center justify-center transition-colors group"
+                className="w-14 h-14 rounded-full border-2 border-gray-300 hover:border-[#77B5FE] flex items-center justify-center transition-colors group"
               >
                 <svg className="w-6 h-6" viewBox="0 0 24 24">
                   <path
@@ -183,7 +183,7 @@ export default function Login() {
             type="button"
             onClick={() => navigate(paths.signup)}
             variant="outline"
-            className="w-full h-12 border-sky-500 text-sky-500 hover:bg-sky-50 font-medium"
+            className="w-full h-12 border-[#77B5FE] text-[#77B5FE] hover:bg-[#F0F6FF] font-medium"
           >
             회원가입
           </Button>

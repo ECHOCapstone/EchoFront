@@ -222,7 +222,7 @@ export default function PronunciationPractice() {
 
         <div className="mb-6">
           {trackProgress && track && (
-            <p className="text-xs font-medium text-sky-600 mb-1">
+            <p className="text-xs font-medium text-[#65A3EC] mb-1">
               {track.title} · 챕터 {trackProgress.current}/{trackProgress.total}
             </p>
           )}

@@ -104,16 +104,16 @@ export default function SignUp() {
         <div className="w-full text-center">
           <div className="mb-8">
             <div className="flex justify-center mb-6">
-              <CheckCircle size={80} className="text-sky-500" />
+              <CheckCircle size={80} className="text-[#77B5FE]" />
             </div>
-            <h1 className="text-4xl font-bold text-sky-500 mb-4">환영합니다!</h1>
+            <h1 className="text-4xl font-bold text-[#77B5FE] mb-4">환영합니다!</h1>
             <p className="text-xl text-gray-700 mb-2">회원가입이 완료되었습니다.</p>
             <p className="text-gray-600">로그인하러 가시겠습니까?</p>
           </div>
 
           <Button
             onClick={() => navigate(paths.login)}
-            className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium"
+            className="w-full h-12 bg-[#77B5FE] hover:bg-[#65A3EC] text-white font-medium"
           >
             로그인하기
           </Button>
@@ -139,7 +139,7 @@ export default function SignUp() {
             뒤로가기
           </button>
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-sky-500 mb-2">회원가입</h1>
+            <h1 className="text-4xl font-bold text-[#77B5FE] mb-2">회원가입</h1>
             <p className="text-gray-600">ECHO!에 오신 것을 환영합니다</p>
           </div>
         </div>
@@ -163,13 +163,13 @@ export default function SignUp() {
                 }}
                 aria-invalid={errors.id !== undefined}
                 aria-describedby="signup-id-message"
-                className="h-12 flex-1 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                className="h-12 flex-1 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
               />
               <Button
                 type="button"
                 onClick={() => handleCheckDuplicate('id')}
                 disabled={!formData.id}
-                className="h-12 px-4 bg-sky-500 hover:bg-sky-600 text-white whitespace-nowrap"
+                className="h-12 px-4 bg-[#77B5FE] hover:bg-[#65A3EC] text-white whitespace-nowrap"
               >
                 중복확인
               </Button>
@@ -198,7 +198,7 @@ export default function SignUp() {
                 }}
                 aria-invalid={errors.password !== undefined}
                 aria-describedby="signup-password-message"
-                className="h-12 pr-10 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                className="h-12 pr-10 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
               />
               <button
                 type="button"
@@ -226,7 +226,7 @@ export default function SignUp() {
                 }}
                 aria-invalid={errors.passwordConfirm !== undefined}
                 aria-describedby="signup-password-confirm-message"
-                className="h-12 pr-10 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                className="h-12 pr-10 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
               />
               <button
                 type="button"
@@ -257,7 +257,7 @@ export default function SignUp() {
               placeholder="닉네임을 입력하세요"
               value={formData.nickname}
               onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-              className="h-12 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+              className="h-12 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
             />
           </div>
 
@@ -277,13 +277,13 @@ export default function SignUp() {
                 }}
                 aria-invalid={errors.email !== undefined}
                 aria-describedby="signup-email-message"
-                className="h-12 flex-1 border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                className="h-12 flex-1 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
               />
               <Button
                 type="button"
                 onClick={() => handleCheckDuplicate('email')}
                 disabled={!formData.email}
-                className="h-12 px-4 bg-sky-500 hover:bg-sky-600 text-white whitespace-nowrap"
+                className="h-12 px-4 bg-[#77B5FE] hover:bg-[#65A3EC] text-white whitespace-nowrap"
               >
                 중복확인
               </Button>
@@ -307,7 +307,7 @@ export default function SignUp() {
                   setAgreed(checked as boolean);
                   setErrors((prev) => ({ ...prev, terms: undefined }));
                 }}
-                className="border-gray-300 data-[state=checked]:bg-sky-500 data-[state=checked]:border-sky-500"
+                className="border-gray-300 data-[state=checked]:bg-[#77B5FE] data-[state=checked]:border-[#77B5FE]"
               />
               <label
                 htmlFor="terms"
@@ -322,7 +322,7 @@ export default function SignUp() {
           <Button
             type="submit"
             disabled={submitting}
-            className="w-full h-12 bg-sky-500 hover:bg-sky-600 text-white font-medium mt-6 disabled:opacity-60"
+            className="w-full h-12 bg-[#77B5FE] hover:bg-[#65A3EC] text-white font-medium mt-6 disabled:opacity-60"
           >
             {submitting ? '처리 중...' : '가입하기'}
           </Button>
@@ -356,7 +356,7 @@ function FieldMessage({ id, error, status, statusKind, statusError }: FieldMessa
     return <p id={id} className="text-sm text-red-500">{statusError}</p>;
   }
   if (status) {
-    return <p id={id} className="text-sm text-sky-600">{status}</p>;
+    return <p id={id} className="text-sm text-[#65A3EC]">{status}</p>;
   }
   return null;
 }

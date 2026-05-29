@@ -33,7 +33,7 @@ const KIND_LABEL: Record<PracticeItem['kind'], string> = {
 };
 
 const KIND_BADGE_CLASS: Record<PracticeItem['kind'], string> = {
-  WORD: 'bg-sky-100 text-sky-700',
+  WORD: 'bg-[#DFEEFF] text-[#5391DA]',
   PHRASE: 'bg-purple-100 text-purple-700',
   SENTENCE: 'bg-emerald-100 text-emerald-700',
 };
@@ -104,7 +104,7 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
         />
       )}
       <BotBubble>
-      <div className="bg-white rounded-xl p-4 border-2 border-sky-100 space-y-3">
+      <div className="bg-white rounded-xl p-4 border-2 border-[#DFEEFF] space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${KIND_BADGE_CLASS[item.kind]}`}>
@@ -149,7 +149,7 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
               {attempt.phonemeTips.length > 0 && (
                 <ul className="mt-2 space-y-1">
                   {attempt.phonemeTips.map((tip, i) => (
-                    <li key={`tip-${attempt.key}-${i}`} className="text-xs text-sky-900 leading-snug">
+                    <li key={`tip-${attempt.key}-${i}`} className="text-xs text-[#1A4A7A] leading-snug">
                       <span className="font-bold mr-1">{tip.phoneme}</span>
                       {tip.koreanCue && <span className="mr-1">({tip.koreanCue})</span>}
                       <span>{tip.tip}</span>

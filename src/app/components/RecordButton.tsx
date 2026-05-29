@@ -91,10 +91,10 @@ export default function RecordButton({
   // 카운트다운 동안 mic 는 이미 켜져 있지만 사용자에게는 "준비" 상태로 보여야 하므로 sky 톤.
   // 카운트다운이 끝나면 빨강 펄스로 "본 녹음" 을 강조한다.
   const stateClass = inCountdown
-    ? 'border-sky-400 bg-sky-50 animate-pulse'
+    ? 'border-[#8EC4FF] bg-[#F0F6FF] animate-pulse'
     : isRecording
       ? 'border-red-500 bg-red-50 animate-pulse'
-      : 'border-gray-300 hover:border-sky-500 hover:bg-sky-50';
+      : 'border-gray-300 hover:border-[#77B5FE] hover:bg-[#F0F6FF]';
 
   const label = inCountdown
     ? `${countdown}`
@@ -106,7 +106,7 @@ export default function RecordButton({
 
   const Icon = inCountdown ? Pause : Mic;
   const iconClass = inCountdown
-    ? 'text-sky-600'
+    ? 'text-[#65A3EC]'
     : isRecording
       ? 'text-red-500 animate-pulse'
       : 'text-gray-600';
@@ -119,23 +119,23 @@ export default function RecordButton({
         className={`${VARIANT_CLASS[variant]} ${stateClass}`}
       >
         <Icon size={iconSize} className={iconClass} />
-        <span className={inCountdown ? 'text-base font-semibold text-sky-700 leading-none' : ''}>
+        <span className={inCountdown ? 'text-base font-semibold text-[#5391DA] leading-none' : ''}>
           {inCountdown ? '잠시 후 시작합니다' : label}
         </span>
       </button>
       {inCountdown && typeof document !== 'undefined' &&
         createPortal(
           <div
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-sky-950/60 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B2E5A]/60 backdrop-blur-md"
             role="dialog"
             aria-live="polite"
             aria-label="녹음 준비 카운트다운"
           >
-            <p className="mb-4 text-sm text-sky-100/90 font-medium tracking-wide">잠시 후 발음을 시작하세요</p>
-            <div className="text-[8rem] font-bold text-sky-300 leading-none drop-shadow-lg tabular-nums">
+            <p className="mb-4 text-sm text-[#DFEEFF]/90 font-medium tracking-wide">잠시 후 발음을 시작하세요</p>
+            <div className="text-[8rem] font-bold text-[#A5D3FF] leading-none drop-shadow-lg tabular-nums">
               {countdown}
             </div>
-            <p className="mt-6 text-xs text-sky-100/70">또렷하고 크게 발음해 주세요</p>
+            <p className="mt-6 text-xs text-[#DFEEFF]/70">또렷하고 크게 발음해 주세요</p>
           </div>,
           document.body,
         )}

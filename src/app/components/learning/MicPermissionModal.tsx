@@ -64,7 +64,7 @@ export default function MicPermissionModal({
           {onRetry && !isUnsupported && (
             <Button
               onClick={onRetry}
-              className="flex-1 h-12 bg-sky-500 hover:bg-sky-600 text-white text-base font-bold rounded-2xl"
+              className="flex-1 h-12 bg-[#77B5FE] hover:bg-[#65A3EC] text-white text-base font-bold rounded-2xl"
             >
               다시 시도
             </Button>

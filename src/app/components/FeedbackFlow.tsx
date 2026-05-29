@@ -11,7 +11,7 @@ import { feedbackApi, type Feedback, type PracticeItem } from '../api';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
-import booExp from '@/assets/boo-pic/BOO12-1.png';
+import booExp from '@/assets/boo-pic/BOO12-2.png';
 
 interface FeedbackFlowProps {
   feedback: Feedback;
@@ -47,7 +47,7 @@ export default function FeedbackFlow({
   const weakPhonemeLabel = feedback.weakPhoneme?.toUpperCase();
   // 점수 구간별 강조 색. 낮은 점수에 무조건 sky 색을 주면 "잘했다" 라는 신호로 오해된다.
   const accuracyColor =
-    feedback.accuracy >= 80 ? 'text-sky-600'
+    feedback.accuracy >= 80 ? 'text-[#65A3EC]'
     : feedback.accuracy >= 60 ? 'text-amber-500'
     : 'text-red-500';
 
@@ -117,12 +117,12 @@ export default function FeedbackFlow({
           <div className="flex items-center justify-between gap-3">
             <p className="text-gray-800">
               {weakPhonemeLabel
-                ? <>약점 음소 <span className="font-bold text-sky-600">{weakPhonemeLabel}</span> 를 한 번 더 연습해 볼까요?</>
+                ? <>약점 음소 <span className="font-bold text-[#65A3EC]">{weakPhonemeLabel}</span> 를 한 번 더 연습해 볼까요?</>
                 : '추천 항목으로 한 번 더 연습해 볼까요?'}
             </p>
             <button
               onClick={() => setRetryStarted(true)}
-              className="flex items-center justify-center px-4 h-11 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-xl whitespace-nowrap"
+              className="flex items-center justify-center px-4 h-11 bg-[#77B5FE] hover:bg-[#65A3EC] text-white text-sm font-medium rounded-xl whitespace-nowrap"
             >
               한 번 더 연습하기
             </button>
@@ -154,7 +154,7 @@ export default function FeedbackFlow({
           <Button
             onClick={handleCompleteAndGetExp}
             disabled={completing}
-            className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white text-lg font-bold rounded-2xl disabled:opacity-60"
+            className="w-full h-14 bg-[#77B5FE] hover:bg-[#65A3EC] text-white text-lg font-bold rounded-2xl disabled:opacity-60"
           >
             {completing ? '처리 중...' : '학습 완료하고 경험치 획득'}
           </Button>
@@ -164,10 +164,8 @@ export default function FeedbackFlow({
       {showExpPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
-            <div className="w-full h-48 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl flex items-center justify-center mb-6">
-              <div className="w-32 h-32 rounded-full bg-white shadow-inner flex items-center justify-center overflow-hidden">
-                <img src={booExp} alt="EXP 획득" className="w-full h-full object-contain" />
-              </div>
+            <div className="w-full h-56 bg-white rounded-2xl flex items-center justify-center mb-6 overflow-hidden">
+              <img src={booExp} alt="EXP 획득" className="h-full object-contain" />
             </div>
             <div className="text-center mb-6">
               <div className="flex items-center justify-center gap-3 mb-4">
@@ -180,7 +178,7 @@ export default function FeedbackFlow({
             </div>
             <Button
               onClick={handleClosePopup}
-              className="w-full h-14 bg-sky-500 hover:bg-sky-600 text-white text-lg font-bold rounded-2xl"
+              className="w-full h-14 bg-[#77B5FE] hover:bg-[#65A3EC] text-white text-lg font-bold rounded-2xl"
             >
               {completeLabel ?? '확인'}
             </Button>

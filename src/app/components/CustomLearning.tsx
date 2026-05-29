@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { CirclePlus, Star, Trash2, Volume2 } from 'lucide-react';
+import { ArrowLeft, CirclePlus, Star, Trash2, Volume2 } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
@@ -87,15 +87,25 @@ export default function CustomLearning() {
       <div className="flex-1 p-6 pb-24">
         <StatusHeader />
 
+        <div className="flex justify-start mb-4">
+          <button
+            onClick={() => navigate(paths.main)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="뒤로가기"
+          >
+            <ArrowLeft size={24} className="text-gray-700" />
+          </button>
+        </div>
+
         <div className="flex items-center justify-between gap-3 mb-8">
           <div className="flex items-center gap-3">
-            <Volume2 size={32} className="text-sky-500" />
+            <Volume2 size={32} className="text-[#77B5FE]" />
             <h1 className="text-3xl font-bold text-gray-900">내 학습 목록</h1>
           </div>
           <button
             onClick={handleAddSession}
             disabled={creating}
-            className="flex items-center justify-center w-11 h-11 rounded-full bg-sky-500 hover:bg-sky-600 text-white disabled:opacity-50 transition-colors"
+            className="flex items-center justify-center w-11 h-11 rounded-full bg-[#77B5FE] hover:bg-[#65A3EC] text-white disabled:opacity-50 transition-colors"
             aria-label="새 학습 추가"
           >
             <CirclePlus size={26} strokeWidth={2.5} />
@@ -110,7 +120,7 @@ export default function CustomLearning() {
           {sessions.map((s) => (
             <div
               key={s.id}
-              className="flex items-stretch gap-1 border-2 border-gray-300 hover:border-sky-500 hover:bg-sky-50 rounded-2xl transition-colors"
+              className="flex items-stretch gap-1 border-2 border-gray-300 hover:border-[#77B5FE] hover:bg-[#F0F6FF] rounded-2xl transition-colors"
             >
               <button
                 onClick={(e) => handleToggleFavorite(e, s)}

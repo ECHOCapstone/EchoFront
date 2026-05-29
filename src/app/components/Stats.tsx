@@ -51,13 +51,13 @@ export default function Stats() {
   // streak 일수가 늘수록 진해진다. 7일 이상은 모두 가장 진한 단계로 묶어 한도를 둔다.
   const ATTENDANCE_COLORS = [
     'bg-gray-100',
-    'bg-sky-100',
-    'bg-sky-200',
-    'bg-sky-300',
-    'bg-sky-400',
-    'bg-sky-500',
-    'bg-sky-600',
-    'bg-sky-700',
+    'bg-[#DFEEFF]',
+    'bg-[#C0DFFF]',
+    'bg-[#A5D3FF]',
+    'bg-[#8EC4FF]',
+    'bg-[#77B5FE]',
+    'bg-[#65A3EC]',
+    'bg-[#5391DA]',
   ] as const;
   const getAttendanceColor = (streakDays: number): string =>
     ATTENDANCE_COLORS[Math.min(Math.max(streakDays, 0), ATTENDANCE_COLORS.length - 1)];
@@ -109,15 +109,15 @@ export default function Stats() {
                 const streakDays = Number(days[String(day)] ?? 0);
                 // 보고 있는 달이 실제 현재 월일 때만 '오늘' 강조 ring 을 적용한다.
                 const isToday = isCurrentMonth && day === currentDay;
-                // 배경이 연한 단계(streak 1~3, sky-100~300) 위에 흰 글씨면 가독성이 떨어진다.
-                // 진한 배경(streak >= 4, sky-400 이상) 일 때만 흰 글씨를 쓴다.
+                // 배경이 연한 단계(streak 1~3, [#DFEEFF]~300) 위에 흰 글씨면 가독성이 떨어진다.
+                // 진한 배경(streak >= 4, [#8EC4FF] 이상) 일 때만 흰 글씨를 쓴다.
                 const textColor = streakDays >= 4 ? 'text-white' : 'text-gray-900';
                 return (
                   <div
                     key={day}
                     className={`aspect-square rounded-md flex items-center justify-center text-sm font-medium transition-colors ${getAttendanceColor(
                       streakDays
-                    )} ${isToday ? 'ring-1 ring-sky-500 ring-offset-1' : ''} ${textColor}`}
+                    )} ${isToday ? 'ring-1 ring-[#77B5FE] ring-offset-1' : ''} ${textColor}`}
                   >
                     {day}
                   </div>
@@ -154,7 +154,7 @@ export default function Stats() {
                     <div className="flex-1 flex items-center gap-2">
                       <div className="flex-1 bg-gray-100 rounded-full h-8 overflow-hidden">
                         <div
-                          className="bg-sky-500 h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                          className="bg-[#77B5FE] h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2"
                           style={{ width: `${(item.count / maxErrorCount) * 100}%` }}
                         >
                           <span className="text-xs font-medium text-white">{item.count}</span>
@@ -177,12 +177,12 @@ export default function Stats() {
                   <div
                     className={`w-20 h-20 rounded-full flex items-center justify-center ${
                       badge.achieved
-                        ? 'bg-gradient-to-br from-sky-100 to-sky-200'
+                        ? 'bg-gradient-to-br from-[#DFEEFF] to-[#C0DFFF]'
                         : 'bg-gray-100'
                     }`}
                   >
                     {badge.achieved
-                      ? <Award size={32} className="text-sky-600" />
+                      ? <Award size={32} className="text-[#65A3EC]" />
                       : <Lock size={26} className="text-gray-400" />}
                   </div>
                   {/* 미보유 배지의 이름도 회색으로 노출하여 다음 도전 목표가 분명하게 보이도록 한다. */}
