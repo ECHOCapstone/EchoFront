@@ -93,6 +93,12 @@ export type PracticeItem = {
 // 모델 서버가 분류한 발화 속도. FAST 이면 "조금 천천히" 안내 배지를 노출한다.
 export type SpeechRate = 'FAST' | 'NORMAL' | 'SLOW';
 
+// 단어별 canonical 음소 (백엔드 g2p words). 음소를 단어 경계로 잘라 보여줄 때 사용한다.
+export type CanonicalWord = {
+  word: string;
+  phonemes: string[];
+};
+
 // 한 번의 녹음 업로드 응답.
 // passed / retryRecommended 는 백엔드의 통과 임계 (app.gamification.pass-threshold) 와
 // LLM 판정을 합쳐 결정한 SSOT 값이라 프론트가 점수만 보고 다시 판단하지 않는다.
@@ -116,6 +122,8 @@ export type RecordingResult = {
   wrongWords: WrongWord[];
   phonemeTips: PhonemeTip[];
   speechRate: SpeechRate;
+  // 단어별 canonical 음소. 비어 있으면 (조회 응답 등) 전체 음소를 한 줄로 폴백 표시한다.
+  canonicalWords: CanonicalWord[];
   createdAt: string;
 };
 

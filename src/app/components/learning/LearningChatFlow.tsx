@@ -13,11 +13,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Info, RotateCcw, Volume2 } from 'lucide-react';
 import { BotBubble, UserBubble } from '../ChatBubble';
-import PhonemeAlignment from '../PhonemeAlignment';
+import FeedbackPhonemeSection from '../FeedbackPhonemeSection';
 import RecordButton from '../RecordButton';
 import { useRecorder } from '../../hooks/useRecorder';
 import { useTtsPlayer } from '../../hooks/useTtsPlayer';
-import type { PhonemeError, PhonemeTip, RecordingResult, SpeechRate, WrongWord } from '../../api';
+import type { CanonicalWord, PhonemeError, PhonemeTip, RecordingResult, SpeechRate, WrongWord } from '../../api';
 import { notifyApiError } from '../../lib/notify';
 import MicPermissionModal from './MicPermissionModal';
 
@@ -49,6 +49,8 @@ type AlignmentSnapshot = {
   canonical: string[];
   errors: PhonemeError[];
   wrongWords: WrongWord[];
+  // 단어별 canonical 음소. 음소를 단어 경계로 잘라 보여줄 때 사용. 비어 있으면 한 줄 폴백.
+  canonicalWords: CanonicalWord[];
 };
 
 type ChatItem =
@@ -172,6 +174,7 @@ export default function LearningChatFlow({
             canonical: uploaded.canonical,
             errors: uploaded.errors,
             wrongWords: uploaded.wrongWords,
+            canonicalWords: uploaded.canonicalWords ?? [],
           },
         },
       ]);
@@ -297,9 +300,9 @@ export default function LearningChatFlow({
                 </ul>
               )}
               {item.phonemeTips.length > 0 && (
-                <div className="mb-3 rounded-lg bg-sky-50 border border-sky-100 px-3 py-2 space-y-1">
+                <div className="mb-3 rounded-lg bg-[#F0F6FF] border border-[#DFEEFF] px-3 py-2 space-y-1">
                   {item.phonemeTips.map((tip, i) => (
-                    <p key={`tip-${item.key}-${i}`} className="text-xs text-sky-900 leading-snug">
+                    <p key={`tip-${item.key}-${i}`} className="text-xs text-[#1A4A7A] leading-snug">
                       <span className="font-bold mr-1">{tip.phoneme}</span>
                       {tip.koreanCue && <span className="mr-1">({tip.koreanCue})</span>}
                       <span>{tip.tip}</span>
@@ -308,12 +311,12 @@ export default function LearningChatFlow({
                 </div>
               )}
               <div className="mb-3">
-                <PhonemeAlignment
+                <FeedbackPhonemeSection
                   targetText={item.alignment.targetText}
                   canonical={item.alignment.canonical}
                   perceived={item.alignment.perceived}
                   errors={item.alignment.errors}
-                  wrongWords={item.alignment.wrongWords}
+                  canonicalWords={item.alignment.canonicalWords}
                 />
               </div>
               {isActive && (
@@ -335,8 +338,8 @@ export default function LearningChatFlow({
                     disabled={busyStep}
                     className={`flex-1 h-11 text-sm font-medium rounded-xl transition-colors disabled:opacity-50 ${
                       primaryAdvance
-                        ? 'bg-sky-500 hover:bg-sky-600 text-white'
-                        : 'bg-white border-2 border-gray-300 hover:border-sky-400 hover:bg-sky-50 text-gray-900'
+                        ? 'bg-[#77B5FE] hover:bg-[#65A3EC] text-white'
+                        : 'bg-white border-2 border-gray-300 hover:border-[#8EC4FF] hover:bg-[#F0F6FF] text-gray-900'
                     }`}
                   >
                     {isLast ? finalAdvanceLabel : advanceLabel}
@@ -363,7 +366,7 @@ export default function LearningChatFlow({
               {p.ttsText && (
                 <button
                   onClick={() => tts.play(p.ttsText)}
-                  className="p-2 bg-sky-500 hover:bg-sky-600 rounded-full transition-colors flex-shrink-0"
+                  className="p-2 bg-[#77B5FE] hover:bg-[#65A3EC] rounded-full transition-colors flex-shrink-0"
                   aria-label="예시 음성 듣기"
                 >
                   <Volume2 size={18} className="text-white" />
