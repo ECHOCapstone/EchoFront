@@ -10,6 +10,8 @@ export type ApiEnvelope<T> =
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 export type StepKind = 'INTRO' | 'RECORD';
 
+export type Role = 'USER' | 'ADMIN';
+
 export type User = {
   id: number;
   username: string;
@@ -17,7 +19,18 @@ export type User = {
   nickname: string;
   streak: number;
   exp: number;
+  role: Role;
   createdAt: string;
+};
+
+// 어드민의 피드백 LLM 설정. provider/model 은 현재 적용값, *Options 는 선택 후보.
+// geminiAvailable 이 false 면 apiKey 미설정이라 gemini 를 고를 수 없다.
+export type LlmConfig = {
+  provider: string;
+  model: string;
+  geminiAvailable: boolean;
+  providerOptions: string[];
+  modelOptions: string[];
 };
 
 export type TokenResponse = {
