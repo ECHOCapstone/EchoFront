@@ -7,6 +7,12 @@ export { feedbackApi } from './feedback';
 export { statsApi } from './stats';
 export { rankingApi } from './ranking';
 export { ttsApi } from './tts';
-export { adminApi, type TrackInput } from './admin';
+export {
+  adminApi,
+  type TrackInput,
+  type AdminStepInput,
+  type ScriptCreateInput,
+  type ScriptUpdateInput,
+} from './admin';
 export { ApiException, getAccessToken, setAccessToken } from './client';
 export * from './types';
