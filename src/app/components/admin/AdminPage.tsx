@@ -8,13 +8,15 @@ import { paths } from '../../lib/paths';
 import LlmSettingsSection from './LlmSettingsSection';
 import ContentSection from './ContentSection';
 import PromptManager from './PromptManager';
+import PhonemeManager from './PhonemeManager';
 
-type TabKey = 'content' | 'llm' | 'prompt';
+type TabKey = 'content' | 'llm' | 'prompt' | 'phoneme';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'content', label: '콘텐츠' },
   { key: 'llm', label: 'LLM' },
   { key: 'prompt', label: '프롬프트' },
+  { key: 'phoneme', label: '음소' },
 ];
 
 export default function AdminPage() {
@@ -56,6 +58,7 @@ export default function AdminPage() {
           {tab === 'content' && <ContentSection />}
           {tab === 'llm' && <LlmSettingsSection />}
           {tab === 'prompt' && <PromptManager />}
+          {tab === 'phoneme' && <PhonemeManager />}
         </div>
       </div>
     </div>
