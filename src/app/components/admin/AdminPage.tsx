@@ -9,14 +9,16 @@ import LlmSettingsSection from './LlmSettingsSection';
 import ContentSection from './ContentSection';
 import PromptManager from './PromptManager';
 import PhonemeManager from './PhonemeManager';
+import SettingsManager from './SettingsManager';
 
-type TabKey = 'content' | 'llm' | 'prompt' | 'phoneme';
+type TabKey = 'content' | 'llm' | 'prompt' | 'phoneme' | 'settings';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'content', label: '콘텐츠' },
   { key: 'llm', label: 'LLM' },
   { key: 'prompt', label: '프롬프트' },
   { key: 'phoneme', label: '음소' },
+  { key: 'settings', label: '설정' },
 ];
 
 export default function AdminPage() {
@@ -38,12 +40,12 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold text-gray-900">관리자</h1>
         </div>
 
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex-1 h-10 rounded-xl text-sm font-medium transition-colors ${
+              className={`flex-1 min-w-[64px] h-10 rounded-xl text-sm font-medium transition-colors ${
                 tab === t.key
                   ? 'bg-brand-500 text-white'
                   : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-brand-300'
@@ -59,6 +61,7 @@ export default function AdminPage() {
           {tab === 'llm' && <LlmSettingsSection />}
           {tab === 'prompt' && <PromptManager />}
           {tab === 'phoneme' && <PhonemeManager />}
+          {tab === 'settings' && <SettingsManager />}
         </div>
       </div>
     </div>
