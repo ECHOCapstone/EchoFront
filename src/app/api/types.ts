@@ -33,6 +33,13 @@ export type LlmConfig = {
   modelOptions: string[];
 };
 
+// LLM 프롬프트 한 건. overridden 이 true 면 classpath 기본값이 아닌 재정의 본문이다.
+export type Prompt = {
+  key: string;
+  content: string;
+  overridden: boolean;
+};
+
 export type TokenResponse = {
   accessToken: string;
   tokenType: string;

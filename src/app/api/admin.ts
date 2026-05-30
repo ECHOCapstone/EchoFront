@@ -1,5 +1,12 @@
 import { apiClient } from './client';
-import type { Difficulty, LlmConfig, ScriptDetail, ScriptSummary, TrackSummary } from './types';
+import type {
+  Difficulty,
+  LlmConfig,
+  Prompt,
+  ScriptDetail,
+  ScriptSummary,
+  TrackSummary,
+} from './types';
 
 // 트랙 생성/수정 입력. displayOrder 는 목록 정렬 순서.
 export type TrackInput = {
@@ -52,4 +59,12 @@ export const adminApi = {
   updateScript: (id: number, input: ScriptUpdateInput) =>
     apiClient.put<ScriptDetail>(`/api/admin/scripts/${id}`, { json: input }),
   deleteScript: (id: number) => apiClient.delete<void>(`/api/admin/scripts/${id}`),
+
+  listPrompts: () => apiClient.get<Prompt[]>('/api/admin/prompts'),
+  // 본문 재정의 (override).
+  updatePrompt: (key: string, content: string) =>
+    apiClient.put<Prompt>(`/api/admin/prompts/${encodeURIComponent(key)}`, { json: { content } }),
+  // classpath 기본값으로 초기화. 응답은 복원된 프롬프트.
+  resetPrompt: (key: string) =>
+    apiClient.delete<Prompt>(`/api/admin/prompts/${encodeURIComponent(key)}`),
 };
