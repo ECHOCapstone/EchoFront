@@ -3,14 +3,18 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
 import { adminApi, type TrackInput, type TrackSummary } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
 
 const EMPTY_FORM: TrackInput = { title: '', description: '', displayOrder: 0 };
 
-export default function TrackManager() {
+export default function TrackManager({
+  onManageScripts,
+}: {
+  onManageScripts: (track: TrackSummary) => void;
+}) {
   const { data, loading, error, setData } = useApiResource(
     () => adminApi.listTracks(),
     [],
@@ -126,11 +130,18 @@ export default function TrackManager() {
           <p className="text-gray-500 text-sm">아직 트랙이 없습니다. 우측 상단 추가 버튼을 눌러 보세요.</p>
         )}
         {tracks.map((track) => (
-          <div key={track.id} className="flex items-center gap-2 p-3 border-2 border-gray-200 rounded-xl">
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 truncate">{track.title}</p>
+          <div key={track.id} className="flex items-center gap-1 p-3 border-2 border-gray-200 rounded-xl">
+            <button
+              onClick={() => onManageScripts(track)}
+              className="flex-1 min-w-0 text-left"
+              aria-label={`${track.title} 챕터 관리`}
+            >
+              <p className="font-medium text-gray-900 truncate flex items-center gap-1">
+                {track.title}
+                <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+              </p>
               <p className="text-xs text-gray-500">챕터 {track.chapterCount}개 · 순서 {track.displayOrder}</p>
-            </div>
+            </button>
             <button
               onClick={() => openEdit(track)}
               aria-label={`${track.title} 수정`}
