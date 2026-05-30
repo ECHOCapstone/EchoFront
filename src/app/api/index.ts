@@ -7,6 +7,7 @@ export { feedbackApi } from './feedback';
 export { statsApi } from './stats';
 export { rankingApi } from './ranking';
 export { ttsApi } from './tts';
+export { phonemesApi } from './phonemes';
 export {
   adminApi,
   type TrackInput,
