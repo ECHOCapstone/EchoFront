@@ -13,13 +13,22 @@ import SessionDetail from './components/SessionDetail';
 import PronunciationPractice from './components/PronunciationPractice';
 import Feedbacks from './components/Feedbacks';
 import Ranking from './components/Ranking';
+import AdminPage from './components/admin/AdminPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
+import { AdminRoute } from './auth/AdminRoute';
 
 // 인증이 필요한 라우트는 Component 자체를 ProtectedRoute 로 감싸 한 곳에서 일괄 처리한다.
 const guard = (Component: ComponentType) => () => (
   <ProtectedRoute>
     <Component />
   </ProtectedRoute>
+);
+
+// 관리자 전용 라우트는 AdminRoute 로 감싼다.
+const adminGuard = (Component: ComponentType) => () => (
+  <AdminRoute>
+    <Component />
+  </AdminRoute>
 );
 
 export const router = createBrowserRouter([
@@ -36,4 +45,5 @@ export const router = createBrowserRouter([
   { path: '/stats', Component: guard(Stats) },
   { path: '/profile', Component: guard(Profile) },
   { path: '/ranking', Component: guard(Ranking) },
+  { path: '/admin', Component: adminGuard(AdminPage) },
 ]);

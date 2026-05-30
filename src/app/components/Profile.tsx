@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, FileText, Lock, LogOut, Pencil, UserX } from 'lucide-react';
+import { Bell, FileText, Lock, LogOut, Pencil, ShieldCheck, UserX } from 'lucide-react';
 import booProfile from '@/assets/boo-pic/BOO23.png';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
@@ -94,6 +94,21 @@ export default function Profile() {
         </div>
 
         <div className="space-y-3">
+          {user?.role === 'ADMIN' && (
+            <button
+              onClick={() => navigate(paths.admin)}
+              className="w-full bg-brand-50 hover:bg-brand-100 rounded-xl p-4 flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-brand-100 rounded-full p-2">
+                  <ShieldCheck size={20} className="text-brand-500" />
+                </div>
+                <span className="font-medium text-gray-900">관리자</span>
+              </div>
+              <span className="text-gray-400">›</span>
+            </button>
+          )}
+
           <button
             onClick={handlePasswordChange}
             className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"

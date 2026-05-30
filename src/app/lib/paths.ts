@@ -33,4 +33,6 @@ export const paths = {
   stats: '/stats',
   profile: '/profile',
   ranking: '/ranking',
+  // 관리자(ADMIN) 전용. AdminRoute 가드가 권한을 검사한다.
+  admin: '/admin',
 } as const;
