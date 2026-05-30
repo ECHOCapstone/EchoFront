@@ -61,6 +61,8 @@ export type ScriptDetail = {
   content: string;
   difficulty: Difficulty;
   isPreset: boolean;
+  practiceWord: string | null;
+  masteryBadgeName: string | null;
   steps: LearningStep[];
 };
 

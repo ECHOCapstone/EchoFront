@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { paths } from '../../lib/paths';
 import LlmSettingsSection from './LlmSettingsSection';
-import TrackManager from './TrackManager';
+import ContentSection from './ContentSection';
 
 type TabKey = 'content' | 'llm';
 
@@ -51,7 +51,7 @@ export default function AdminPage() {
         </div>
 
         <div className="space-y-6">
-          {tab === 'content' && <TrackManager />}
+          {tab === 'content' && <ContentSection />}
           {tab === 'llm' && <LlmSettingsSection />}
         </div>
       </div>
