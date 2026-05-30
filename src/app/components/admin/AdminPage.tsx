@@ -7,12 +7,14 @@ import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { paths } from '../../lib/paths';
 import LlmSettingsSection from './LlmSettingsSection';
 import ContentSection from './ContentSection';
+import PromptManager from './PromptManager';
 
-type TabKey = 'content' | 'llm';
+type TabKey = 'content' | 'llm' | 'prompt';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'content', label: '콘텐츠' },
   { key: 'llm', label: 'LLM' },
+  { key: 'prompt', label: '프롬프트' },
 ];
 
 export default function AdminPage() {
@@ -53,6 +55,7 @@ export default function AdminPage() {
         <div className="space-y-6">
           {tab === 'content' && <ContentSection />}
           {tab === 'llm' && <LlmSettingsSection />}
+          {tab === 'prompt' && <PromptManager />}
         </div>
       </div>
     </div>
