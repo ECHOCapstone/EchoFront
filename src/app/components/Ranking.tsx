@@ -53,7 +53,7 @@ export default function Ranking() {
 
         {data && (
           <>
-            <div className="bg-gradient-to-r from-[#77B5FE] to-[#65A3EC] rounded-2xl p-5 mb-6 text-white shadow-lg">
+            <div className="bg-gradient-to-r from-brand-500 to-brand-600 rounded-2xl p-5 mb-6 text-white shadow-lg">
               <p className="text-sm opacity-90 mb-1">내 순위</p>
               <div className="flex items-end justify-between">
                 <div className="flex items-baseline gap-2">
@@ -72,29 +72,29 @@ export default function Ranking() {
                 <div
                   key={u.rank}
                   className={`flex items-center justify-between p-4 rounded-2xl border-2 ${
-                    u.isMe ? 'border-[#77B5FE] bg-[#F0F6FF]' : 'border-gray-200 bg-white'
+                    u.isMe ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'
                   }`}
                 >
                   <div className="flex items-center gap-4">
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                        u.isMe ? 'bg-[#77B5FE] text-white' : 'bg-gray-100 text-gray-700'
+                        u.isMe ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-700'
                       }`}
                     >
                       {u.rank}
                     </div>
                     <p
                       className={`text-lg ${
-                        u.isMe ? 'font-bold text-[#5391DA]' : 'font-medium text-gray-900'
+                        u.isMe ? 'font-bold text-brand-700' : 'font-medium text-gray-900'
                       }`}
                     >
                       {u.nickname}
-                      {u.isMe && <span className="ml-2 text-xs text-[#77B5FE]">(나)</span>}
+                      {u.isMe && <span className="ml-2 text-xs text-brand-500">(나)</span>}
                     </p>
                   </div>
                   <p
                     className={`text-lg font-bold ${
-                      u.isMe ? 'text-[#5391DA]' : 'text-gray-700'
+                      u.isMe ? 'text-brand-700' : 'text-gray-700'
                     }`}
                   >
                     {u.accuracy.toFixed(1)}%
@@ -106,7 +106,7 @@ export default function Ranking() {
             <div className="mt-8">
               <Button
                 onClick={() => navigate(paths.main)}
-                className="w-full h-14 bg-[#77B5FE] hover:bg-[#65A3EC] text-white text-lg font-bold rounded-2xl"
+                className="w-full h-14 bg-brand-500 hover:bg-brand-600 text-white text-lg font-bold rounded-2xl"
               >
                 홈으로 돌아가기
               </Button>

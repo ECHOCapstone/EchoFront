@@ -205,7 +205,7 @@ export default function SessionDetail() {
             </button>
           </div>
           {sentences.length > 0 && !editingScript && (
-            <p className="text-xs font-medium text-[#65A3EC] mt-1">
+            <p className="text-xs font-medium text-brand-600 mt-1">
               {sentences.length}문장
             </p>
           )}
@@ -226,12 +226,12 @@ export default function SessionDetail() {
                   value={scriptDraft}
                   onChange={(e) => setScriptDraft(e.target.value)}
                   placeholder="여기에 대본을 입력하세요..."
-                  className="w-full h-32 p-3 border-2 border-gray-300 rounded-xl focus:border-[#77B5FE] focus:ring-[#77B5FE] resize-none"
+                  className="w-full h-32 p-3 border-2 border-gray-300 rounded-xl focus:border-brand-500 focus:ring-brand-500 resize-none"
                 />
                 <Button
                   onClick={handleSubmitScript}
                   disabled={!scriptDraft.trim()}
-                  className="w-full h-11 mt-3 bg-[#77B5FE] hover:bg-[#65A3EC] text-white text-sm font-medium rounded-xl disabled:opacity-50"
+                  className="w-full h-11 mt-3 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50"
                 >
                   대본 입력 완료
                 </Button>
@@ -246,7 +246,7 @@ export default function SessionDetail() {
                   <p className="text-sm text-gray-700">대본 내용을 바꾸고 싶다면?</p>
                   <button
                     onClick={handleEditScript}
-                    className="flex items-center gap-1 px-3 h-9 bg-white border-2 border-gray-300 hover:border-[#77B5FE] hover:bg-[#F0F6FF] text-gray-900 text-sm font-medium rounded-xl transition-colors"
+                    className="flex items-center gap-1 px-3 h-9 bg-white border-2 border-gray-300 hover:border-brand-500 hover:bg-brand-50 text-gray-900 text-sm font-medium rounded-xl transition-colors"
                   >
                     <Pencil size={14} className="text-gray-600" />
                     <span>대본 수정</span>

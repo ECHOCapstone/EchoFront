@@ -43,7 +43,7 @@ export default function BottomNav({ active, variant = 'main' }: BottomNavProps) 
               key={tab}
               onClick={() => navigate(path)}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                isActive ? 'text-[#77B5FE]' : 'text-gray-400 hover:text-[#77B5FE]'
+                isActive ? 'text-brand-500' : 'text-gray-400 hover:text-brand-500'
               }`}
             >
               <Icon size={28} strokeWidth={isActive ? 2.5 : 2} />

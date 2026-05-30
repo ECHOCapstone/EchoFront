@@ -36,7 +36,7 @@ export default function Feedbacks() {
         </div>
 
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-[#77B5FE] rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-brand-500 rounded-full flex items-center justify-center">
             <Check size={24} className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Feedbacks</h1>
