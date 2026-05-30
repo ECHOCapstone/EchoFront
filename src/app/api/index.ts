@@ -7,5 +7,6 @@ export { feedbackApi } from './feedback';
 export { statsApi } from './stats';
 export { rankingApi } from './ranking';
 export { ttsApi } from './tts';
+export { adminApi } from './admin';
 export { ApiException, getAccessToken, setAccessToken } from './client';
 export * from './types';

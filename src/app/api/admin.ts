@@ -1,0 +1,11 @@
+import { apiClient } from './client';
+import type { LlmConfig } from './types';
+
+// 관리자 전용 API. 백엔드가 /api/admin/** 를 ROLE_ADMIN 으로 보호하므로
+// 일반 사용자가 호출하면 403 으로 떨어진다.
+export const adminApi = {
+  getLlmConfig: () => apiClient.get<LlmConfig>('/api/admin/llm'),
+  // model 은 provider 가 gemini 일 때만 의미가 있다. rule-based 면 생략한다.
+  updateLlmConfig: (provider: string, model?: string) =>
+    apiClient.put<LlmConfig>('/api/admin/llm', { json: { provider, model } }),
+};
