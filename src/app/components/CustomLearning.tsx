@@ -1,39 +1,33 @@
 // 사용자 맞춤 세션 목록 + 신규 생성 + 삭제.
 // (+) 버튼은 헤더 우측에 두어 목록이 길어져도 한 번에 누를 수 있다.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, CirclePlus, Star, Trash2, Volume2 } from 'lucide-react';
 import { Button } from './ui/button';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { sessionsApi, type Session } from '../api';
+import { useApiResource } from '../hooks/useApiResource';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 
+// 새 세션의 기본 제목. 사용자는 진입 후 SessionDetail 의 제목 편집 버튼으로 즉시 바꿀 수 있다.
+const DEFAULT_NEW_SESSION_TITLE = '새 학습 세션';
+
 export default function CustomLearning() {
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, setData } = useApiResource(
+    () => sessionsApi.list(),
+    [],
+    {
+      initialData: [],
+      onError: (err) => notifyApiError(err, '세션을 불러오지 못했습니다.'),
+    }
+  );
+  const sessions = data ?? [];
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    sessionsApi
-      .list()
-      .then((data) => !cancelled && setSessions(data))
-      .catch((err: unknown) => {
-        if (!cancelled) notifyApiError(err, '세션을 불러오지 못했습니다.');
-      })
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // 새 세션의 기본 제목. 사용자는 진입 후 SessionDetail 의 제목 편집 버튼으로 즉시 바꿀 수 있다.
-  const DEFAULT_NEW_SESSION_TITLE = '새 학습 세션';
 
   const handleAddSession = async () => {
     if (creating) return;
@@ -56,7 +50,7 @@ export default function CustomLearning() {
     setDeletingId(target.id);
     try {
       await sessionsApi.delete(target.id);
-      setSessions((prev) => prev.filter((s) => s.id !== target.id));
+      setData((prev) => (prev ?? []).filter((s) => s.id !== target.id));
     } catch (err) {
       notifyApiError(err, '세션 삭제에 실패했습니다.');
     } finally {
@@ -70,8 +64,8 @@ export default function CustomLearning() {
     event.stopPropagation();
     try {
       const updated = await sessionsApi.update(target.id, { favorite: !target.favorite });
-      setSessions((prev) => {
-        const replaced = prev.map((s) => (s.id === updated.id ? updated : s));
+      setData((prev) => {
+        const replaced = (prev ?? []).map((s) => (s.id === updated.id ? updated : s));
         return [...replaced].sort((a, b) => {
           if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
           return b.updatedAt.localeCompare(a.updatedAt);
@@ -99,13 +93,13 @@ export default function CustomLearning() {
 
         <div className="flex items-center justify-between gap-3 mb-8">
           <div className="flex items-center gap-3">
-            <Volume2 size={32} className="text-[#77B5FE]" />
+            <Volume2 size={32} className="text-brand-500" />
             <h1 className="text-3xl font-bold text-gray-900">내 학습 목록</h1>
           </div>
           <button
             onClick={handleAddSession}
             disabled={creating}
-            className="flex items-center justify-center w-11 h-11 rounded-full bg-[#77B5FE] hover:bg-[#65A3EC] text-white disabled:opacity-50 transition-colors"
+            className="flex items-center justify-center w-11 h-11 rounded-full bg-brand-500 hover:bg-brand-600 text-white disabled:opacity-50 transition-colors"
             aria-label="새 학습 추가"
           >
             <CirclePlus size={26} strokeWidth={2.5} />
@@ -120,7 +114,7 @@ export default function CustomLearning() {
           {sessions.map((s) => (
             <div
               key={s.id}
-              className="flex items-stretch gap-1 border-2 border-gray-300 hover:border-[#77B5FE] hover:bg-[#F0F6FF] rounded-2xl transition-colors"
+              className="flex items-stretch gap-1 border-2 border-gray-300 hover:border-brand-500 hover:bg-brand-50 rounded-2xl transition-colors"
             >
               <button
                 onClick={(e) => handleToggleFavorite(e, s)}

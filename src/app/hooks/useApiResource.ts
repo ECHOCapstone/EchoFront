@@ -14,7 +14,7 @@
 //     { errorFallback: '학습 트랙을 불러오지 못했습니다.' }
 //   );
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { ApiException } from '../api';
 
 interface Options<T> {
@@ -33,7 +33,8 @@ interface Result<T> {
   loading: boolean;
   error: string | null;
   reload: () => void;
-  setData: (next: T | null) => void;
+  // React setState 와 동일한 시그니처 — 값 또는 함수형 업데이트 모두 받는다 (낙관적 갱신용).
+  setData: Dispatch<SetStateAction<T | null>>;
 }
 
 export function useApiResource<T>(
