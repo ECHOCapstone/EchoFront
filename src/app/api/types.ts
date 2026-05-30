@@ -40,6 +40,12 @@ export type Prompt = {
   overridden: boolean;
 };
 
+// 음소 조음 이미지. imageUrl 은 이미지 바이트를 서빙하는 공개 경로(/api/phonemes/{p}/image).
+export type PhonemeAsset = {
+  phoneme: string;
+  imageUrl: string;
+};
+
 export type TokenResponse = {
   accessToken: string;
   tokenType: string;

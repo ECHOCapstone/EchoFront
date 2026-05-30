@@ -5,10 +5,26 @@
 //                 각 음소 칩을 누르면 바로 아래에 그 음소의 조음 위치(혀 위치 사진 + 발음 단서)가 펼쳐진다.
 // 조음 위치는 음소 칩 클릭으로 자연스럽게 열리므로 별도 버튼을 두지 않는다.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScanText, X } from 'lucide-react';
 import type { CanonicalWord, PhonemeError } from '../api';
 import { getArticulationGuide, getArticulationImage, normalizePhoneme } from '../lib/articulation';
+import { loadPhonemeImages } from '../lib/phonemeImages';
+
+// 관리자가 업로드한 백엔드 음소 이미지 URL. 없으면 null (정적 에셋으로 폴백).
+function usePhonemeImageUrl(phoneme: string): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    loadPhonemeImages().then((map) => {
+      if (active) setUrl(map.get(phoneme) ?? null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [phoneme]);
+  return url;
+}
 
 interface FeedbackPhonemeSectionProps {
   targetText: string | null;
@@ -145,7 +161,8 @@ export default function FeedbackPhonemeSection({
 }
 
 function ArticulationCard({ phoneme, onClose }: { phoneme: string; onClose: () => void }) {
-  const image = getArticulationImage(phoneme);
+  // 관리자가 올린 백엔드 이미지를 우선 쓰고, 없으면 번들된 정적 에셋으로 폴백한다.
+  const image = usePhonemeImageUrl(phoneme) ?? getArticulationImage(phoneme);
   const guide = getArticulationGuide(phoneme);
 
   return (
