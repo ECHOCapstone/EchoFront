@@ -18,7 +18,7 @@ export default function Main() {
 
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Hello,</h1>
-          <h1 className="text-4xl font-bold text-[#77B5FE]">{nickname}님</h1>
+          <h1 className="text-4xl font-bold text-brand-500">{nickname}님</h1>
         </div>
 
         {/* 두 학습 입구. 카드 안 콘텐츠가 아이콘 + 제목 + 한 줄 설명 정도라 h-36 이 콘텐츠와 균형이 맞는다. */}
@@ -26,7 +26,7 @@ export default function Main() {
           <div className="relative">
             <button
               onClick={() => navigate(paths.tracks)}
-              className="w-full h-36 bg-[#77B5FE] hover:bg-[#65A3EC] active:bg-[#5391DA] text-white shadow-lg rounded-3xl flex items-center gap-5 px-6 transition-colors text-left"
+              className="w-full h-36 bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white shadow-lg rounded-3xl flex items-center gap-5 px-6 transition-colors text-left"
             >
               <div className="flex-1 min-w-0">
                 <div className="text-2xl font-bold mb-1">학습 트랙</div>

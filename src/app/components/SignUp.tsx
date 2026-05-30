@@ -42,6 +42,17 @@ export default function SignUp() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // 입력 변경 시 폼 값을 갱신하고 해당 필드의 인라인 에러를 비운다.
+  // 중복확인 대상(id/email)은 이전 확인 결과도 idle 로 되돌려 다시 확인하게 한다.
+  const updateField = (field: keyof typeof formData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === 'nickname') return;
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
+    if (field === 'id' || field === 'email') {
+      setCheckStatus((prev) => ({ ...prev, [field]: 'idle' }));
+    }
+  };
+
   const handleCheckDuplicate = async (field: 'id' | 'email') => {
     const value = formData[field];
     if (!value) return;
@@ -104,16 +115,16 @@ export default function SignUp() {
         <div className="w-full text-center">
           <div className="mb-8">
             <div className="flex justify-center mb-6">
-              <CheckCircle size={80} className="text-[#77B5FE]" />
+              <CheckCircle size={80} className="text-brand-500" />
             </div>
-            <h1 className="text-4xl font-bold text-[#77B5FE] mb-4">환영합니다!</h1>
+            <h1 className="text-4xl font-bold text-brand-500 mb-4">환영합니다!</h1>
             <p className="text-xl text-gray-700 mb-2">회원가입이 완료되었습니다.</p>
             <p className="text-gray-600">로그인하러 가시겠습니까?</p>
           </div>
 
           <Button
             onClick={() => navigate(paths.login)}
-            className="w-full h-12 bg-[#77B5FE] hover:bg-[#65A3EC] text-white font-medium"
+            className="w-full h-12 bg-brand-500 hover:bg-brand-600 text-white font-medium"
           >
             로그인하기
           </Button>
@@ -139,7 +150,7 @@ export default function SignUp() {
             뒤로가기
           </button>
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-[#77B5FE] mb-2">회원가입</h1>
+            <h1 className="text-4xl font-bold text-brand-500 mb-2">회원가입</h1>
             <p className="text-gray-600">ECHO!에 오신 것을 환영합니다</p>
           </div>
         </div>
@@ -155,21 +166,16 @@ export default function SignUp() {
                 type="text"
                 placeholder="아이디를 입력하세요"
                 value={formData.id}
-                onChange={(e) => {
-                  setFormData({ ...formData, id: e.target.value });
-                  // 입력이 바뀌면 이전 중복확인 결과는 무효화한다.
-                  setCheckStatus((prev) => ({ ...prev, id: 'idle' }));
-                  setErrors((prev) => ({ ...prev, id: undefined }));
-                }}
+                onChange={(e) => updateField('id', e.target.value)}
                 aria-invalid={errors.id !== undefined}
                 aria-describedby="signup-id-message"
-                className="h-12 flex-1 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
+                className="h-12 flex-1 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
               />
               <Button
                 type="button"
                 onClick={() => handleCheckDuplicate('id')}
                 disabled={!formData.id}
-                className="h-12 px-4 bg-[#77B5FE] hover:bg-[#65A3EC] text-white whitespace-nowrap"
+                className="h-12 px-4 bg-brand-500 hover:bg-brand-600 text-white whitespace-nowrap"
               >
                 중복확인
               </Button>
@@ -192,13 +198,10 @@ export default function SignUp() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="비밀번호를 입력하세요"
                 value={formData.password}
-                onChange={(e) => {
-                  setFormData({ ...formData, password: e.target.value });
-                  setErrors((prev) => ({ ...prev, password: undefined }));
-                }}
+                onChange={(e) => updateField('password', e.target.value)}
                 aria-invalid={errors.password !== undefined}
                 aria-describedby="signup-password-message"
-                className="h-12 pr-10 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
+                className="h-12 pr-10 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
               />
               <button
                 type="button"
@@ -220,13 +223,10 @@ export default function SignUp() {
                 type={showPasswordConfirm ? 'text' : 'password'}
                 placeholder="비밀번호를 다시 입력하세요"
                 value={formData.passwordConfirm}
-                onChange={(e) => {
-                  setFormData({ ...formData, passwordConfirm: e.target.value });
-                  setErrors((prev) => ({ ...prev, passwordConfirm: undefined }));
-                }}
+                onChange={(e) => updateField('passwordConfirm', e.target.value)}
                 aria-invalid={errors.passwordConfirm !== undefined}
                 aria-describedby="signup-password-confirm-message"
-                className="h-12 pr-10 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
+                className="h-12 pr-10 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
               />
               <button
                 type="button"
@@ -256,8 +256,8 @@ export default function SignUp() {
               type="text"
               placeholder="닉네임을 입력하세요"
               value={formData.nickname}
-              onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-              className="h-12 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
+              onChange={(e) => updateField('nickname', e.target.value)}
+              className="h-12 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
             />
           </div>
 
@@ -270,20 +270,16 @@ export default function SignUp() {
                 type="email"
                 placeholder="이메일을 입력하세요"
                 value={formData.email}
-                onChange={(e) => {
-                  setFormData({ ...formData, email: e.target.value });
-                  setCheckStatus((prev) => ({ ...prev, email: 'idle' }));
-                  setErrors((prev) => ({ ...prev, email: undefined }));
-                }}
+                onChange={(e) => updateField('email', e.target.value)}
                 aria-invalid={errors.email !== undefined}
                 aria-describedby="signup-email-message"
-                className="h-12 flex-1 border-gray-300 focus:border-[#77B5FE] focus:ring-[#77B5FE]"
+                className="h-12 flex-1 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
               />
               <Button
                 type="button"
                 onClick={() => handleCheckDuplicate('email')}
                 disabled={!formData.email}
-                className="h-12 px-4 bg-[#77B5FE] hover:bg-[#65A3EC] text-white whitespace-nowrap"
+                className="h-12 px-4 bg-brand-500 hover:bg-brand-600 text-white whitespace-nowrap"
               >
                 중복확인
               </Button>
@@ -307,7 +303,7 @@ export default function SignUp() {
                   setAgreed(checked as boolean);
                   setErrors((prev) => ({ ...prev, terms: undefined }));
                 }}
-                className="border-gray-300 data-[state=checked]:bg-[#77B5FE] data-[state=checked]:border-[#77B5FE]"
+                className="border-gray-300 data-[state=checked]:bg-brand-500 data-[state=checked]:border-brand-500"
               />
               <label
                 htmlFor="terms"
@@ -322,7 +318,7 @@ export default function SignUp() {
           <Button
             type="submit"
             disabled={submitting}
-            className="w-full h-12 bg-[#77B5FE] hover:bg-[#65A3EC] text-white font-medium mt-6 disabled:opacity-60"
+            className="w-full h-12 bg-brand-500 hover:bg-brand-600 text-white font-medium mt-6 disabled:opacity-60"
           >
             {submitting ? '처리 중...' : '가입하기'}
           </Button>
@@ -356,7 +352,7 @@ function FieldMessage({ id, error, status, statusKind, statusError }: FieldMessa
     return <p id={id} className="text-sm text-red-500">{statusError}</p>;
   }
   if (status) {
-    return <p id={id} className="text-sm text-[#65A3EC]">{status}</p>;
+    return <p id={id} className="text-sm text-brand-600">{status}</p>;
   }
   return null;
 }

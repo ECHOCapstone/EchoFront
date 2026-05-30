@@ -75,8 +75,8 @@ export default function FeedbackPhonemeSection({
         onClick={togglePhonemes}
         className={`flex items-center gap-1.5 px-3 h-9 text-sm font-medium rounded-lg border transition-colors ${
           showPhonemes
-            ? 'bg-[#F0F6FF] border-[#77B5FE] text-[#5391DA]'
-            : 'bg-white border-gray-300 text-gray-600 hover:border-[#77B5FE]'
+            ? 'bg-brand-50 border-brand-500 text-brand-700'
+            : 'bg-white border-gray-300 text-gray-600 hover:border-brand-500'
         }`}
       >
         <ScanText size={16} />
@@ -112,8 +112,8 @@ export default function FeedbackPhonemeSection({
                           className={`text-sm font-mono px-1.5 py-0.5 rounded border transition-colors ${
                             wrong
                               ? 'bg-red-100 text-red-600 border-red-300 font-bold'
-                              : 'bg-white text-gray-700 border-gray-200 hover:border-[#77B5FE]'
-                          } ${active ? 'ring-2 ring-[#77B5FE]' : ''}`}
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-brand-500'
+                          } ${active ? 'ring-2 ring-brand-500' : ''}`}
                         >
                           {ph}
                         </button>
@@ -149,9 +149,9 @@ function ArticulationCard({ phoneme, onClose }: { phoneme: string; onClose: () =
   const guide = getArticulationGuide(phoneme);
 
   return (
-    <div className="rounded-lg bg-[#F0F6FF] border border-[#C0DFFF] p-3">
+    <div className="rounded-lg bg-brand-50 border border-brand-200 p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-lg font-bold font-mono text-[#5391DA]">{phoneme}</span>
+        <span className="text-lg font-bold font-mono text-brand-700">{phoneme}</span>
         <button onClick={onClose} className="p-1 hover:bg-white rounded-full" aria-label="닫기">
           <X size={16} className="text-gray-500" />
         </button>
@@ -168,7 +168,7 @@ function ArticulationCard({ phoneme, onClose }: { phoneme: string; onClose: () =
         <div className="space-y-1">
           <p className="text-sm">
             <span className="font-semibold text-gray-900">한글 음차 </span>
-            <span className="text-[#5391DA] font-medium">{guide.koreanCue}</span>
+            <span className="text-brand-700 font-medium">{guide.koreanCue}</span>
           </p>
           <p className="text-xs text-gray-600 leading-relaxed">{guide.tip}</p>
         </div>

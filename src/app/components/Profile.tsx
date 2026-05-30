@@ -64,7 +64,7 @@ export default function Profile() {
         <StatusHeader />
 
         <div className="text-center mb-8">
-          <div className="w-24 h-24 bg-[#DFEEFF] rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+          <div className="w-24 h-24 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
             <img src={booProfile} alt="프로필" className="w-full h-full object-contain" />
           </div>
           <div className="flex items-center justify-center gap-2">
@@ -99,8 +99,8 @@ export default function Profile() {
             className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="bg-[#DFEEFF] rounded-full p-2">
-                <Lock size={20} className="text-[#77B5FE]" />
+              <div className="bg-brand-100 rounded-full p-2">
+                <Lock size={20} className="text-brand-500" />
               </div>
               <span className="font-medium text-gray-900">비밀번호 설정</span>
             </div>
@@ -112,8 +112,8 @@ export default function Profile() {
             className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="bg-[#DFEEFF] rounded-full p-2">
-                <Bell size={20} className="text-[#77B5FE]" />
+              <div className="bg-brand-100 rounded-full p-2">
+                <Bell size={20} className="text-brand-500" />
               </div>
               <span className="font-medium text-gray-900">알림</span>
             </div>
@@ -121,7 +121,7 @@ export default function Profile() {
               <span className="text-sm text-gray-600">{notificationEnabled ? 'ON' : 'OFF'}</span>
               <div
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  notificationEnabled ? 'bg-[#77B5FE]' : 'bg-gray-300'
+                  notificationEnabled ? 'bg-brand-500' : 'bg-gray-300'
                 }`}
               >
                 <div
@@ -138,8 +138,8 @@ export default function Profile() {
             className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="bg-[#DFEEFF] rounded-full p-2">
-                <FileText size={20} className="text-[#77B5FE]" />
+              <div className="bg-brand-100 rounded-full p-2">
+                <FileText size={20} className="text-brand-500" />
               </div>
               <span className="font-medium text-gray-900">약관 및 정책</span>
             </div>

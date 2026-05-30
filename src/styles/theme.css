@@ -105,6 +105,16 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  /* 앱 브랜드 sky 색 스케일 — 컴포넌트는 bg-brand-500 등 유틸로만 참조한다 (hex 직접 사용 금지). */
+  --color-brand-50: #f0f6ff;
+  --color-brand-100: #dfeeff;
+  --color-brand-200: #c0dfff;
+  --color-brand-300: #a5d3ff;
+  --color-brand-400: #8ec4ff;
+  --color-brand-500: #77b5fe;
+  --color-brand-600: #65a3ec;
+  --color-brand-700: #5391da;
+  --color-brand-900: #1a4a7a;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

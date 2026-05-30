@@ -47,16 +47,16 @@ export default function TrackList() {
             <button
               key={track.id}
               onClick={() => navigate(paths.trackOverview(track.id))}
-              className="w-full text-left bg-white border-2 border-gray-200 hover:border-[#77B5FE] hover:bg-[#F0F6FF] rounded-2xl p-5 transition-colors"
+              className="w-full text-left bg-white border-2 border-gray-200 hover:border-brand-500 hover:bg-brand-50 rounded-2xl p-5 transition-colors"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#DFEEFF] flex items-center justify-center flex-shrink-0">
-                  <BookOpen size={24} className="text-[#77B5FE]" />
+                <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+                  <BookOpen size={24} className="text-brand-500" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h2 className="text-xl font-bold text-gray-900 mb-1">{track.title}</h2>
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">{track.description}</p>
-                  <p className="text-xs text-[#65A3EC] font-medium">챕터 {track.chapterCount}개</p>
+                  <p className="text-xs text-brand-600 font-medium">챕터 {track.chapterCount}개</p>
                 </div>
               </div>
             </button>

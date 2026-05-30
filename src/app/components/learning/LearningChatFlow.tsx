@@ -300,9 +300,9 @@ export default function LearningChatFlow({
                 </ul>
               )}
               {item.phonemeTips.length > 0 && (
-                <div className="mb-3 rounded-lg bg-[#F0F6FF] border border-[#DFEEFF] px-3 py-2 space-y-1">
+                <div className="mb-3 rounded-lg bg-brand-50 border border-brand-100 px-3 py-2 space-y-1">
                   {item.phonemeTips.map((tip, i) => (
-                    <p key={`tip-${item.key}-${i}`} className="text-xs text-[#1A4A7A] leading-snug">
+                    <p key={`tip-${item.key}-${i}`} className="text-xs text-brand-900 leading-snug">
                       <span className="font-bold mr-1">{tip.phoneme}</span>
                       {tip.koreanCue && <span className="mr-1">({tip.koreanCue})</span>}
                       <span>{tip.tip}</span>
@@ -338,8 +338,8 @@ export default function LearningChatFlow({
                     disabled={busyStep}
                     className={`flex-1 h-11 text-sm font-medium rounded-xl transition-colors disabled:opacity-50 ${
                       primaryAdvance
-                        ? 'bg-[#77B5FE] hover:bg-[#65A3EC] text-white'
-                        : 'bg-white border-2 border-gray-300 hover:border-[#8EC4FF] hover:bg-[#F0F6FF] text-gray-900'
+                        ? 'bg-brand-500 hover:bg-brand-600 text-white'
+                        : 'bg-white border-2 border-gray-300 hover:border-brand-400 hover:bg-brand-50 text-gray-900'
                     }`}
                   >
                     {isLast ? finalAdvanceLabel : advanceLabel}
@@ -366,7 +366,7 @@ export default function LearningChatFlow({
               {p.ttsText && (
                 <button
                   onClick={() => tts.play(p.ttsText)}
-                  className="p-2 bg-[#77B5FE] hover:bg-[#65A3EC] rounded-full transition-colors flex-shrink-0"
+                  className="p-2 bg-brand-500 hover:bg-brand-600 rounded-full transition-colors flex-shrink-0"
                   aria-label="예시 음성 듣기"
                 >
                   <Volume2 size={18} className="text-white" />

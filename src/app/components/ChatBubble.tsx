@@ -5,7 +5,7 @@ import booAvatar from '@/assets/boo-pic/BOO9-1.png';
 export function BotBubble({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#DFEEFF] to-[#C0DFFF] border border-[#C0DFFF] flex-shrink-0 flex items-center justify-center overflow-hidden">
+      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-100 to-brand-200 border border-brand-200 flex-shrink-0 flex items-center justify-center overflow-hidden">
         <img src={booAvatar} alt="코치" className="w-full h-full object-contain" />
       </div>
 
@@ -34,12 +34,12 @@ export function BotBubble({ children }: { children: ReactNode }) {
 export function UserBubble({ children }: { children: ReactNode }) {
   return (
     <div className="flex justify-end">
-      <div className="relative max-w-[75%] bg-[#77B5FE] text-white rounded-2xl px-4 py-3 shadow-sm mr-2">
+      <div className="relative max-w-[75%] bg-brand-500 text-white rounded-2xl px-4 py-3 shadow-sm mr-2">
         <span
           className="absolute top-3 -right-2 w-0 h-0
                      border-t-[8px] border-t-transparent
                      border-b-[8px] border-b-transparent
-                     border-l-[9px] border-l-[#77B5FE]"
+                     border-l-[9px] border-l-brand-500"
         />
         <p className="text-base font-medium">{children}</p>
       </div>
