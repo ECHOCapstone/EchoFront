@@ -6,6 +6,7 @@ import type {
   Prompt,
   ScriptDetail,
   ScriptSummary,
+  Setting,
   TrackSummary,
 } from './types';
 
@@ -80,4 +81,12 @@ export const adminApi = {
   },
   deletePhonemeImage: (phoneme: string) =>
     apiClient.delete<void>(`/api/admin/phonemes/${encodeURIComponent(phoneme)}`),
+
+  listSettings: () => apiClient.get<Setting[]>('/api/admin/settings'),
+  // 값 재정의 (override).
+  updateSetting: (key: string, value: string) =>
+    apiClient.put<Setting>(`/api/admin/settings/${encodeURIComponent(key)}`, { json: { value } }),
+  // yaml 기본값으로 초기화. 응답은 복원된 설정.
+  resetSetting: (key: string) =>
+    apiClient.delete<Setting>(`/api/admin/settings/${encodeURIComponent(key)}`),
 };

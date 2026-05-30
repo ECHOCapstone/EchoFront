@@ -46,6 +46,14 @@ export type PhonemeAsset = {
   imageUrl: string;
 };
 
+// 편집 가능한 게임화/메시지 설정 한 건. type 으로 입력 형식을, overridden 으로 재정의 여부를 안다.
+export type Setting = {
+  key: string;
+  value: string;
+  type: 'INT' | 'DOUBLE' | 'STRING';
+  overridden: boolean;
+};
+
 export type TokenResponse = {
   accessToken: string;
   tokenType: string;
