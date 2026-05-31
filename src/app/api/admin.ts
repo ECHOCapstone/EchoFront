@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import type {
   Difficulty,
   LlmConfig,
+  ModelServerConfig,
   PhonemeAsset,
   Prompt,
   ScriptDetail,
@@ -45,6 +46,11 @@ export const adminApi = {
   // model 은 provider 가 gemini 일 때만 의미가 있다. rule-based 면 생략한다.
   updateLlmConfig: (provider: string, model?: string) =>
     apiClient.put<LlmConfig>('/api/admin/llm', { json: { provider, model } }),
+
+  // 음소인식 모델 선택. 후보는 모델 서버 /models 에서 오고, 선택값은 백엔드가 보관한다.
+  getModelServerConfig: () => apiClient.get<ModelServerConfig>('/api/admin/model-server'),
+  updateModelServerConfig: (model: string) =>
+    apiClient.put<ModelServerConfig>('/api/admin/model-server', { json: { model } }),
 
   listTracks: () => apiClient.get<TrackSummary[]>('/api/admin/tracks'),
   createTrack: (input: TrackInput) =>
