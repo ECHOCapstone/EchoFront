@@ -33,6 +33,21 @@ export type LlmConfig = {
   modelOptions: string[];
 };
 
+// 음소인식 모델 후보 한 건. type 은 echo(자체 체크포인트) | slplab(HuggingFace).
+export type AsrModelOption = {
+  id: string;
+  label: string;
+  type: string;
+};
+
+// 어드민의 음소인식 모델 선택. selected 는 현재 적용값, options 는 모델 서버가 제공하는 후보.
+// serverAvailable 이 false 면 모델 서버에 연결할 수 없어 후보를 못 받은 상태다.
+export type ModelServerConfig = {
+  selected: string;
+  options: AsrModelOption[];
+  serverAvailable: boolean;
+};
+
 // LLM 프롬프트 한 건. overridden 이 true 면 classpath 기본값이 아닌 재정의 본문이다.
 export type Prompt = {
   key: string;

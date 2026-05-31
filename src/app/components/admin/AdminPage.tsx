@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { paths } from '../../lib/paths';
 import LlmSettingsSection from './LlmSettingsSection';
+import AsrModelSection from './AsrModelSection';
 import ContentSection from './ContentSection';
 import PromptManager from './PromptManager';
 import PhonemeManager from './PhonemeManager';
@@ -15,7 +16,7 @@ type TabKey = 'content' | 'llm' | 'prompt' | 'phoneme' | 'settings';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'content', label: '콘텐츠' },
-  { key: 'llm', label: 'LLM' },
+  { key: 'llm', label: '모델' },
   { key: 'prompt', label: '프롬프트' },
   { key: 'phoneme', label: '음소' },
   { key: 'settings', label: '설정' },
@@ -58,7 +59,12 @@ export default function AdminPage() {
 
         <div className="space-y-6">
           {tab === 'content' && <ContentSection />}
-          {tab === 'llm' && <LlmSettingsSection />}
+          {tab === 'llm' && (
+            <>
+              <LlmSettingsSection />
+              <AsrModelSection />
+            </>
+          )}
           {tab === 'prompt' && <PromptManager />}
           {tab === 'phoneme' && <PhonemeManager />}
           {tab === 'settings' && <SettingsManager />}
