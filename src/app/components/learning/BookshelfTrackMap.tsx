@@ -21,8 +21,8 @@ function pseudo(i: number, salt: number): number {
 
 // 강조 책(챕터) 색 = 메인화면 카드 색. 학습트랙(brand-500) / 맞춤학습(#5BC0EB) 번갈아.
 const SPINES = ['#77b5fe', '#5BC0EB'];
-// 장식 책 색 — 무채색(밝은~중간 회색) 계열.
-const DECO = ['#d6d8db', '#c4c7cb', '#babdc2', '#cfd2d6', '#c9ccd0', '#dcdee1', '#bfc2c7'];
+// 장식 책 색 — 무채색(중간 회색) 계열. 너무 옅지 않게 한 단계 어둡게.
+const DECO = ['#b8bcc1', '#a7abb1', '#9ca1a8', '#bcc0c5', '#aeb2b8', '#c2c6cb', '#a2a7ad'];
 
 const PER_SHELF = 3; // 한 칸에 꽂는 챕터 수
 
@@ -49,7 +49,7 @@ function DecoBook({ seed }: { seed: number }) {
         height: h,
         width: w,
         background: color,
-        opacity: 0.7,
+        opacity: 0.85,
         transform: lean ? 'rotate(-7deg)' : undefined,
         transformOrigin: 'bottom right',
       }}
