@@ -29,8 +29,8 @@ const PER_SHELF = 3; // 한 칸에 꽂는 챕터 수
 // 제목 텍스트박스 가로 미세 이동(px, +오른쪽 / -왼쪽). 이웃 라벨이 겹칠 때 손으로 떨군다.
 // 키는 제목에서 공백 제거 + 소문자.
 const LABEL_ADJUST: Record<string, number> = {
-  avse: -16, // "A vs E" → 왼쪽으로
-  ivsee: 16, // "I vs EE" → 오른쪽으로
+  avse: -30, // "A vs E" → 왼쪽으로
+  ivsee: 30, // "I vs EE" → 오른쪽으로
 };
 
 function labelDx(title: string): number {
