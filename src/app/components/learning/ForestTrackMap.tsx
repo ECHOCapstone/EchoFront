@@ -17,8 +17,8 @@ type ForestTrackMapProps = {
   onEnter: (chapterIndex: number) => void;
 };
 
-const V = 33; // 챕터 한 칸의 세로 viewBox 단위
-const STEP_PX = 132; // 챕터 한 칸의 실제 픽셀 높이 (STEP_PX / V = 4 → 가로 스케일과 맞춰 왜곡 최소화)
+const V = 23; // 챕터 한 칸의 세로 viewBox 단위
+const STEP_PX = 92; // 챕터 한 칸의 실제 픽셀 높이 (STEP_PX / V = 4 → 가로 스케일과 맞춰 왜곡 최소화)
 // 위(boo)·아래(라벨) 여백. SVG 와 DOM 매핑을 정확히 맞추려면 두 좌표계에 같은 비율로 줘야 한다.
 const PAD_V = 8;
 const PAD_PX = PAD_V * (STEP_PX / V); // = 32
@@ -35,7 +35,7 @@ type Point = { x: number; y: number };
 // 노드 중심 좌표. x 는 sine 으로 좌우로 굽이치게(20~80%), y 는 칸마다 균등 배치.
 function nodePoints(count: number): Point[] {
   return Array.from({ length: count }, (_, i) => ({
-    x: 50 + Math.sin(i * 0.9 + 0.6) * 30,
+    x: 50 + Math.sin(i * 0.9 + 0.6) * 36,
     y: PAD_V + i * V + V * 0.5,
   }));
 }
@@ -173,7 +173,7 @@ export default function ForestTrackMap({ trackId, chapters, onEnter }: ForestTra
                 src={booWalker}
                 alt=""
                 aria-hidden
-                className="pointer-events-none absolute bottom-full left-1/2 mb-0.5 h-16 w-16 -translate-x-1/2 object-contain drop-shadow-md"
+                className="pointer-events-none absolute bottom-full left-1/2 mb-0.5 h-12 w-12 -translate-x-1/2 object-contain drop-shadow-md"
               />
             )}
 
@@ -222,10 +222,12 @@ export default function ForestTrackMap({ trackId, chapters, onEnter }: ForestTra
               </span>
             </button>
 
-            {/* 라벨 카드 (디딤돌 아래쪽에 absolute 로 띄워 돌 중심이 길 위에 오게 유지) */}
+            {/* 라벨 카드 — 노드가 굽은 바깥쪽(빈 공간)으로 띄운다. 세로 공간을 차지하지 않아
+                행 간격을 좁혀도 위/아래 챕터와 겹치지 않는다. */}
             <span
               className={[
-                'pointer-events-none absolute left-1/2 top-full mt-1.5 w-max max-w-[10rem] -translate-x-1/2 rounded-xl px-2.5 py-1 text-center shadow-sm backdrop-blur-sm',
+                'pointer-events-none absolute top-1/2 w-max max-w-[8.5rem] -translate-y-1/2 rounded-xl px-2.5 py-1 shadow-sm backdrop-blur-sm',
+                p.x < 50 ? 'left-full ml-2 text-left' : 'right-full mr-2 text-right',
                 isCurrent ? 'bg-white/95 ring-1 ring-brand-200' : 'bg-white/80',
               ].join(' ')}
             >
