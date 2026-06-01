@@ -52,7 +52,7 @@ const RULES: Rule[] = [
   { keywords: ['사무실', '사무', '오피스', '회사', '직장', '업무', '회의'], visual: { Icon: Monitor, bg: 'bg-slate-100', fg: 'text-slate-600' } },
   { keywords: ['기차', '지하철', '전철'], visual: { Icon: Train, bg: 'bg-cyan-100', fg: 'text-cyan-700' } },
   { keywords: ['버스', '정류장'], visual: { Icon: Bus, bg: 'bg-lime-100', fg: 'text-lime-700' } },
-  { keywords: ['교통', '대중교통', '택시', '운전', '도로'], visual: { Icon: Car, bg: 'bg-indigo-100', fg: 'text-indigo-600' } },
+  { keywords: ['교통', '대중교통', '택시', '운전', '도로'], visual: { Icon: Car, bg: 'bg-green-100', fg: 'text-green-600' } },
   { keywords: ['우체국', '우편', '택배', '편지'], visual: { Icon: Mail, bg: 'bg-blue-100', fg: 'text-blue-600' } },
   { keywords: ['도서관', '책', '서점'], visual: { Icon: Library, bg: 'bg-stone-100', fg: 'text-stone-600' } },
   { keywords: ['길', '방향', '안내', '위치', '찾기'], visual: { Icon: Navigation, bg: 'bg-green-100', fg: 'text-green-600' } },
