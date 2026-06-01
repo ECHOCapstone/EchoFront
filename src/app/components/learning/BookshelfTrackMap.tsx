@@ -26,6 +26,17 @@ const DECO = ['#b8bcc1', '#a7abb1', '#9ca1a8', '#bcc0c5', '#aeb2b8', '#c2c6cb', 
 
 const PER_SHELF = 3; // 한 칸에 꽂는 챕터 수
 
+// 제목 텍스트박스 가로 미세 이동(px, +오른쪽 / -왼쪽). 이웃 라벨이 겹칠 때 손으로 떨군다.
+// 키는 제목에서 공백 제거 + 소문자.
+const LABEL_ADJUST: Record<string, number> = {
+  avse: -16, // "A vs E" → 왼쪽으로
+  ivsee: 16, // "I vs EE" → 오른쪽으로
+};
+
+function labelDx(title: string): number {
+  return LABEL_ADJUST[(title ?? '').toLowerCase().replace(/\s+/g, '')] ?? 0;
+}
+
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { EASY: '쉬움', MEDIUM: '보통', HARD: '어려움' };
 const DIFFICULTY_DOTS: Record<Difficulty, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
 
@@ -81,8 +92,11 @@ export default function BookshelfTrackMap({ trackId, chapters, onEnter }: Booksh
 
                   {/* 강조된 챕터 책 + 위에 뜬 제목 박스 */}
                   <div className="relative flex shrink-0 flex-col items-center justify-end">
-                    {/* 제목 텍스트박스 (책등에 새기지 않고 따로 띄움) */}
-                    <span className="absolute bottom-full mb-2 w-max max-w-[6rem] rounded-lg bg-white/95 px-2 py-1 text-center shadow-sm ring-1 ring-black/5">
+                    {/* 제목 텍스트박스 (책등에 새기지 않고 따로 띄움). 책 위 중앙 + 제목별 미세 이동. */}
+                    <span
+                      className="absolute bottom-full left-1/2 mb-2 w-max max-w-[6rem] rounded-lg bg-white/95 px-2 py-1 text-center shadow-sm ring-1 ring-black/5"
+                      style={{ transform: `translateX(calc(-50% + ${labelDx(chapter.title)}px))` }}
+                    >
                       <span className="line-clamp-2 text-[11px] font-bold leading-tight text-gray-900">
                         {chapter.title}
                       </span>
