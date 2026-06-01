@@ -21,8 +21,8 @@ function pseudo(i: number, salt: number): number {
 
 // 강조 책(챕터) 색 = 메인화면 카드 색. 학습트랙(brand-500) / 맞춤학습(#5BC0EB) 번갈아.
 const SPINES = ['#77b5fe', '#5BC0EB'];
-// 장식 책 색 — 흐릿한 베이지/그레이.
-const DECO = ['#cbb89a', '#b9c2cf', '#c9bcae', '#bcae9c', '#a9b6a0', '#cdbfd0', '#d2c4a6'];
+// 장식 책 색 — 무채색(밝은~중간 회색) 계열.
+const DECO = ['#d6d8db', '#c4c7cb', '#babdc2', '#cfd2d6', '#c9ccd0', '#dcdee1', '#bfc2c7'];
 
 const PER_SHELF = 3; // 한 칸에 꽂는 챕터 수
 
@@ -62,7 +62,7 @@ export default function BookshelfTrackMap({ trackId, chapters, onEnter }: Booksh
   const shelves = chunk(chapters, PER_SHELF);
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-[#e6ddcc] p-3 ring-1 ring-stone-300/70 shadow-inner">
+    <div className="overflow-hidden rounded-3xl bg-[#e9eaec] p-3 ring-1 ring-gray-300/70 shadow-inner">
       {shelves.map((row, shelfIdx) => (
         <div key={shelfIdx} className="relative">
           {/* 책 줄: 바닥(책꽂이 판) 기준으로 세움. 제목 박스가 책 위에 떠서 행이 위로 늘어난다. */}
@@ -114,7 +114,7 @@ export default function BookshelfTrackMap({ trackId, chapters, onEnter }: Booksh
                       </span>
                       {/* 완료 책갈피 */}
                       {isDone && (
-                        <span className="absolute -top-1.5 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white shadow ring-2 ring-[#e6ddcc]">
+                        <span className="absolute -top-1.5 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white shadow ring-2 ring-[#e9eaec]">
                           <Check size={12} strokeWidth={3} />
                         </span>
                       )}
@@ -128,11 +128,11 @@ export default function BookshelfTrackMap({ trackId, chapters, onEnter }: Booksh
             })}
           </div>
 
-          {/* 책꽂이 판(나무, 톤다운) */}
+          {/* 책꽂이 판(무채색) */}
           <div
             aria-hidden
             className="h-3 rounded-sm shadow-md"
-            style={{ background: 'linear-gradient(180deg, #8c7458 0%, #6f5a43 100%)' }}
+            style={{ background: 'linear-gradient(180deg, #aeb2b8 0%, #868b92 100%)' }}
           />
           {shelfIdx < shelves.length - 1 && <div className="h-3" />}
         </div>
