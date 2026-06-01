@@ -38,6 +38,8 @@ import {
 import { useApiResource } from '../hooks/useApiResource';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
+import { markChapterComplete } from '../lib/trackProgress';
+import { celebrateChapter, celebrateTrack } from '../lib/reward';
 
 type TrackContext = { trackId: number; chapterIndex: number };
 
@@ -167,15 +169,20 @@ export default function PronunciationPractice() {
 
   const onCompleteHandler = trackContext
     ? () => {
+        // 방금 끝낸 챕터를 완료 처리(지도의 잠금 해제·체크 표시 근거). 첫 완료면 보상 연출.
+        const firstClear = markChapterComplete(trackContext.trackId, trackContext.chapterIndex);
         if (!track) {
+          if (firstClear) celebrateChapter();
           navigate(paths.trackOverview(trackContext.trackId));
           return;
         }
         if (isLastChapter) {
           // 트랙 완주는 한 번뿐인 이벤트라 inline navigate 보다 모달로 명확히 마무리한다.
+          celebrateTrack();
           setTrackCompleteOpen(true);
           return;
         }
+        if (firstClear) celebrateChapter();
         const nextIndex = trackContext.chapterIndex + 1;
         const nextChapter = track.chapters[nextIndex];
         navigate(
