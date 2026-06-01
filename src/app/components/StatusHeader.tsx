@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router';
 import { Flame, Zap } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
+import { levelInfo } from '../lib/leveling';
 
 interface StatusHeaderProps {
   streak?: number;
@@ -16,6 +17,7 @@ export default function StatusHeader({ streak, exp }: StatusHeaderProps) {
 
   const streakValue = streak ?? user?.streak ?? 0;
   const expValue = exp ?? user?.exp ?? 0;
+  const lv = levelInfo(expValue);
 
   const goStats = () => navigate(paths.stats);
 
@@ -28,6 +30,26 @@ export default function StatusHeader({ streak, exp }: StatusHeaderProps) {
         <Flame size={20} className="text-orange-500" />
         <span className="text-sm font-medium text-gray-900">
           연속 출석 {streakValue}일!
+        </span>
+      </button>
+
+      {/* 레벨 배지 — EXP 에서 파생한 레벨과 현재 레벨 진행률을 함께 노출 */}
+      <button
+        onClick={goStats}
+        className="flex items-center gap-2 px-3 py-2 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
+        title={`레벨 ${lv.level} · ${lv.current}/${lv.required} EXP`}
+      >
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold text-white">
+          {lv.level}
+        </span>
+        <span className="flex flex-col items-start">
+          <span className="text-[11px] font-bold leading-none text-brand-700">Lv {lv.level}</span>
+          <span className="mt-1 h-1.5 w-14 overflow-hidden rounded-full bg-brand-100">
+            <span
+              className="block h-full rounded-full bg-brand-500 transition-all duration-500"
+              style={{ width: `${Math.round(lv.ratio * 100)}%` }}
+            />
+          </span>
         </span>
       </button>
 
