@@ -30,6 +30,11 @@ const DIFFICULTY_LABEL: Record<Difficulty, string> = {
 };
 const DIFFICULTY_DOTS: Record<Difficulty, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
 
+// 개별 장식 수동 미세 이동(viewBox 단위, dx: +오른쪽 / dy: +아래). 인덱스 = 노드 순서.
+const SCENERY_ADJUST: Record<number, { dx?: number; dy?: number }> = {
+  4: { dx: -16, dy: 5 }, // 세 번째 나무
+};
+
 type Point = { x: number; y: number };
 
 // 인덱스 기반 결정적 의사난수(0~1). 렌더마다 같은 값이라 장식 위치가 흔들리지 않는다.
@@ -133,8 +138,11 @@ export default function ForestTrackMap({ trackId, chapters, onEnter }: ForestTra
             가장자리 영역에 두되 위치·높이·크기만 살짝 흩뿌려, 중앙으로 몰리지 않게 한다. */}
         {points.map((p, i) => {
           // 라벨 방향의 가장자리: 왼쪽 노드 → 오른쪽 끝(80~93), 오른쪽 노드 → 왼쪽 끝(7~20)
-          const x = p.x < 50 ? 80 + pseudo(i, 1) * 13 : 7 + pseudo(i, 1) * 13;
-          const y = p.y + (pseudo(i, 2) - 0.5) * 11; // 행에서 위아래로 흔들기
+          // SCENERY_ADJUST: 특정 장식만 손으로 미세 이동(dx: +오른쪽, dy: +아래).
+          //   i=4 = 위에서 세 번째 나무 → 왼쪽으로 많이, 아래로 조금.
+          const adj = SCENERY_ADJUST[i];
+          const x = (p.x < 50 ? 80 + pseudo(i, 1) * 13 : 7 + pseudo(i, 1) * 13) + (adj?.dx ?? 0);
+          const y = p.y + (pseudo(i, 2) - 0.5) * 11 + (adj?.dy ?? 0); // 행에서 위아래로 흔들기
           const scale = 0.85 + pseudo(i, 3) * 0.55; // 크기 다양화
           return i % 2 === 0 ? (
             <PineTree key={`tree-${i}`} x={x} y={y} scale={scale} />
