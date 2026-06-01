@@ -123,9 +123,10 @@ export default function ForestTrackMap({ trackId, chapters, onEnter }: ForestTra
           <ellipse cx={28} cy={V * 0.25} rx={6} ry={2.6} />
           <ellipse cx={78} cy={V * 0.55} rx={8} ry={3} />
         </g>
-        {/* 나무·덤불: 노드 반대편에 배치해 길을 가리지 않게 */}
+        {/* 나무·덤불: 라벨과 같은 방향(라벨이 뻗어 나가는 쪽)이되, 라벨보다 더 바깥 끝에 둔다.
+            라벨은 노드에서 중앙 쪽으로 나가므로 그 방향의 가장자리에 배치 → 라벨에 가리지 않는다. */}
         {points.map((p, i) => {
-          const side = p.x > 50 ? p.x - 30 : p.x + 30;
+          const side = p.x < 50 ? 88 : 12;
           return i % 2 === 0 ? (
             <PineTree key={`tree-${i}`} x={side} y={p.y} scale={1.1} />
           ) : (
