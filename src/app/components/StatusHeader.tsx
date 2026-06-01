@@ -22,21 +22,11 @@ export default function StatusHeader({ streak, exp }: StatusHeaderProps) {
   const goStats = () => navigate(paths.stats);
 
   return (
-    <div className="flex items-center justify-end gap-2 mb-4 flex-wrap">
+    <div className="flex items-center gap-2 mb-4 flex-wrap">
+      {/* 레벨 배지 — 맨 왼쪽 끝에 고정(mr-auto 로 이후 항목을 오른쪽으로 민다) */}
       <button
         onClick={goStats}
-        className="flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 rounded-full transition-colors"
-      >
-        <Flame size={20} className="text-orange-500" />
-        <span className="text-sm font-medium text-gray-900">
-          연속 출석 {streakValue}일!
-        </span>
-      </button>
-
-      {/* 레벨 배지 — EXP 에서 파생한 레벨과 현재 레벨 진행률을 함께 노출 */}
-      <button
-        onClick={goStats}
-        className="flex items-center gap-2 px-3 py-2 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
+        className="mr-auto flex items-center gap-2 px-3 py-2 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
         title={`레벨 ${lv.level} · ${lv.current}/${lv.required} EXP`}
       >
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold text-white">
@@ -50,6 +40,16 @@ export default function StatusHeader({ streak, exp }: StatusHeaderProps) {
               style={{ width: `${Math.round(lv.ratio * 100)}%` }}
             />
           </span>
+        </span>
+      </button>
+
+      <button
+        onClick={goStats}
+        className="flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 rounded-full transition-colors"
+      >
+        <Flame size={20} className="text-orange-500" />
+        <span className="text-sm font-medium text-gray-900">
+          연속 출석 {streakValue}일!
         </span>
       </button>
 

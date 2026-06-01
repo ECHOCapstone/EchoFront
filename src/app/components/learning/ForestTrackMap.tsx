@@ -63,10 +63,10 @@ function PineTree({ x, y, scale = 1 }: { x: number; y: number; scale?: number })
   const s = scale;
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`} opacity={0.9}>
-      <rect x={-1} y={6} width={2} height={4} rx={0.6} fill="#9a7b4f" />
-      <polygon points="0,-10 6,0 -6,0" fill="#3f9b5c" />
-      <polygon points="0,-6 5.2,3 -5.2,3" fill="#4caf6a" />
-      <polygon points="0,-2 4.4,7 -4.4,7" fill="#5cc47a" />
+      <rect x={-1} y={6} width={2} height={4} rx={0.6} fill="#7e8a96" />
+      <polygon points="0,-10 6,0 -6,0" fill="#2f8f93" />
+      <polygon points="0,-6 5.2,3 -5.2,3" fill="#3aa6a8" />
+      <polygon points="0,-2 4.4,7 -4.4,7" fill="#52c2bd" />
     </g>
   );
 }
@@ -75,9 +75,9 @@ function PineTree({ x, y, scale = 1 }: { x: number; y: number; scale?: number })
 function Bush({ x, y, scale = 1 }: { x: number; y: number; scale?: number }) {
   return (
     <g transform={`translate(${x} ${y}) scale(${scale})`} opacity={0.85}>
-      <circle cx={-3} cy={1} r={3.4} fill="#6fcf8a" />
-      <circle cx={3} cy={1} r={3.4} fill="#5cc47a" />
-      <circle cx={0} cy={-2} r={4} fill="#79d999" />
+      <circle cx={-3} cy={1} r={3.4} fill="#5fc6c0" />
+      <circle cx={3} cy={1} r={3.4} fill="#52c2bd" />
+      <circle cx={0} cy={-2} r={4} fill="#6fd2cc" />
     </g>
   );
 }
@@ -103,7 +103,7 @@ export default function ForestTrackMap({ trackId, chapters, onEnter }: ForestTra
       <div
         aria-hidden
         className="absolute inset-0"
-        style={{ background: 'linear-gradient(180deg, #d6ecff 0%, #e6f6ec 35%, #d8f0dd 100%)' }}
+        style={{ background: 'linear-gradient(180deg, #c4e2ff 0%, #cfe8f4 45%, #cfeaea 100%)' }}
       />
       <svg
         aria-hidden
@@ -114,7 +114,7 @@ export default function ForestTrackMap({ trackId, chapters, onEnter }: ForestTra
         {/* 부드러운 언덕 띠 */}
         {points.map((p, i) =>
           i % 2 === 0 ? (
-            <ellipse key={`hill-${i}`} cx={p.x > 50 ? 12 : 88} cy={p.y} rx={34} ry={12} fill="#cdeccf" opacity={0.55} />
+            <ellipse key={`hill-${i}`} cx={p.x > 50 ? 12 : 88} cy={p.y} rx={34} ry={12} fill="#bfe0e6" opacity={0.55} />
           ) : null
         )}
         {/* 구름 (맨 위) */}
@@ -173,8 +173,7 @@ export default function ForestTrackMap({ trackId, chapters, onEnter }: ForestTra
                 src={booWalker}
                 alt=""
                 aria-hidden
-                className="pointer-events-none absolute bottom-full left-1/2 mb-0.5 h-16 w-16 -translate-x-1/2 object-contain drop-shadow-md animate-bounce"
-                style={{ animationDuration: '1.6s' }}
+                className="pointer-events-none absolute bottom-full left-1/2 mb-0.5 h-16 w-16 -translate-x-1/2 object-contain drop-shadow-md"
               />
             )}
 
