@@ -32,6 +32,12 @@ const DIFFICULTY_DOTS: Record<Difficulty, number> = { EASY: 1, MEDIUM: 2, HARD: 
 
 type Point = { x: number; y: number };
 
+// 인덱스 기반 결정적 의사난수(0~1). 렌더마다 같은 값이라 장식 위치가 흔들리지 않는다.
+function pseudo(i: number, salt: number): number {
+  const n = Math.sin((i + 1) * 12.9898 + salt * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+}
+
 // 노드 중심 좌표. x 는 sine 으로 좌우로 굽이치게(20~80%), y 는 칸마다 균등 배치.
 function nodePoints(count: number): Point[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -123,14 +129,17 @@ export default function ForestTrackMap({ trackId, chapters, onEnter }: ForestTra
           <ellipse cx={28} cy={V * 0.25} rx={6} ry={2.6} />
           <ellipse cx={78} cy={V * 0.55} rx={8} ry={3} />
         </g>
-        {/* 나무·덤불: 라벨과 같은 방향(라벨이 뻗어 나가는 쪽)이되, 라벨보다 더 바깥 끝에 둔다.
-            라벨은 노드에서 중앙 쪽으로 나가므로 그 방향의 가장자리에 배치 → 라벨에 가리지 않는다. */}
+        {/* 나무·덤불: 라벨이 뻗는 쪽(중앙 방향)의 바깥 영역 안에서 위치·높이·크기를 조금씩
+            흩뿌려 자연스럽게 둔다. 라벨보다 바깥이라 가리지 않으면서, 끝에만 줄 세우지 않는다. */}
         {points.map((p, i) => {
-          const side = p.x < 50 ? 88 : 12;
-          return i % 2 === 0 ? (
-            <PineTree key={`tree-${i}`} x={side} y={p.y} scale={1.1} />
+          // 라벨 방향: 왼쪽 노드 → 오른쪽(74~90), 오른쪽 노드 → 왼쪽(10~26)
+          const x = p.x < 50 ? 74 + pseudo(i, 1) * 16 : 10 + pseudo(i, 1) * 16;
+          const y = p.y + (pseudo(i, 2) - 0.5) * 11; // 행에서 위아래로 흔들기
+          const scale = 0.85 + pseudo(i, 3) * 0.55; // 크기 다양화
+          return pseudo(i, 4) < 0.5 ? (
+            <PineTree key={`tree-${i}`} x={x} y={y} scale={scale} />
           ) : (
-            <Bush key={`bush-${i}`} x={side} y={p.y + 4} scale={1} />
+            <Bush key={`bush-${i}`} x={x} y={y + 3} scale={scale} />
           );
         })}
       </svg>
