@@ -20,8 +20,9 @@ type ForestTrackMapProps = {
 const V = 23; // 챕터 한 칸의 세로 viewBox 단위
 const STEP_PX = 92; // 챕터 한 칸의 실제 픽셀 높이 (STEP_PX / V = 4 → 가로 스케일과 맞춰 왜곡 최소화)
 // 위(boo)·아래(라벨) 여백. SVG 와 DOM 매핑을 정확히 맞추려면 두 좌표계에 같은 비율로 줘야 한다.
-const PAD_V = 8;
-const PAD_PX = PAD_V * (STEP_PX / V); // = 32
+// 첫 노드 boo 가 상단 경계에 닿아 잘리지 않게 약간의 헤드룸을 둔다.
+const PAD_V = 10;
+const PAD_PX = PAD_V * (STEP_PX / V); // = 40
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   EASY: '쉬움',
