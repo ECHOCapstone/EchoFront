@@ -3,8 +3,8 @@ import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
-import booMain from '@/assets/boo-pic/BOO17-1.png';
-import booCustom from '@/assets/boo-pic/BOO3-1.png';
+import booMain from '@/assets/boo-pic/BOO20-1.png';
+import booCustom from '@/assets/boo-pic/BOO17-1.png';
 
 export default function Main() {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ export default function Main() {
               src={booMain}
               alt=""
               aria-hidden
-              className="absolute -right-2 bottom-1 w-48 h-48 object-contain pointer-events-none"
+              className="absolute right-0 bottom-0 w-44 h-44 object-contain object-right-bottom rounded-br-3xl pointer-events-none"
             />
           </div>
 
@@ -46,7 +46,7 @@ export default function Main() {
               onClick={() => navigate(paths.customLearning)}
               className="w-full h-36 bg-[#5BC0EB] hover:bg-[#49AED9] active:bg-[#379CC7] text-white shadow-lg rounded-3xl flex items-center gap-5 px-6 transition-colors text-left"
             >
-              <div className="flex-1 min-w-0 ml-[50%]">
+              <div className="flex-1 min-w-0 ml-[42%]">
                 <div className="text-2xl font-bold mb-1">맞춤 학습</div>
                 <div className="text-sm opacity-90 leading-relaxed">내 대본으로 한 문장씩 연습해요</div>
               </div>
@@ -55,7 +55,7 @@ export default function Main() {
               src={booCustom}
               alt=""
               aria-hidden
-              className="absolute left-2 bottom-1 w-44 h-44 object-contain pointer-events-none"
+              className="absolute left-0 bottom-1 w-44 h-44 object-contain pointer-events-none"
             />
           </div>
         </div>
