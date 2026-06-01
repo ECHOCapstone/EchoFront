@@ -129,14 +129,14 @@ export default function ForestTrackMap({ trackId, chapters, onEnter }: ForestTra
           <ellipse cx={28} cy={V * 0.25} rx={6} ry={2.6} />
           <ellipse cx={78} cy={V * 0.55} rx={8} ry={3} />
         </g>
-        {/* 나무·덤불: 라벨이 뻗는 쪽(중앙 방향)의 바깥 영역 안에서 위치·높이·크기를 조금씩
-            흩뿌려 자연스럽게 둔다. 라벨보다 바깥이라 가리지 않으면서, 끝에만 줄 세우지 않는다. */}
+        {/* 나무·덤불: 위에서부터 나무 → 수풀 → 나무 … 규칙적으로 교대. 라벨이 뻗는 쪽의
+            가장자리 영역에 두되 위치·높이·크기만 살짝 흩뿌려, 중앙으로 몰리지 않게 한다. */}
         {points.map((p, i) => {
-          // 라벨 방향: 왼쪽 노드 → 오른쪽(74~90), 오른쪽 노드 → 왼쪽(10~26)
-          const x = p.x < 50 ? 74 + pseudo(i, 1) * 16 : 10 + pseudo(i, 1) * 16;
+          // 라벨 방향의 가장자리: 왼쪽 노드 → 오른쪽 끝(80~93), 오른쪽 노드 → 왼쪽 끝(7~20)
+          const x = p.x < 50 ? 80 + pseudo(i, 1) * 13 : 7 + pseudo(i, 1) * 13;
           const y = p.y + (pseudo(i, 2) - 0.5) * 11; // 행에서 위아래로 흔들기
           const scale = 0.85 + pseudo(i, 3) * 0.55; // 크기 다양화
-          return pseudo(i, 4) < 0.5 ? (
+          return i % 2 === 0 ? (
             <PineTree key={`tree-${i}`} x={x} y={y} scale={scale} />
           ) : (
             <Bush key={`bush-${i}`} x={x} y={y + 3} scale={scale} />
