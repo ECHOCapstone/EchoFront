@@ -10,6 +10,7 @@ import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import ForestTrackMap from './learning/ForestTrackMap';
 import GridTrackMap from './learning/GridTrackMap';
+import BookshelfTrackMap from './learning/BookshelfTrackMap';
 import { tracksApi } from '../api';
 import { useApiResource } from '../hooks/useApiResource';
 import { paths } from '../lib/paths';
@@ -129,6 +130,9 @@ export default function TrackOverview() {
                   ) : theme === 'grid' ? (
                     // 격자 테마 (장소별/상황별 트랙) — 잠금 없이 원하는 챕터부터 자유 선택
                     <GridTrackMap trackId={track.id} chapters={track.chapters} onEnter={enterChapter} />
+                  ) : theme === 'shelf' ? (
+                    // 책장 테마 (모음 구별 트랙) — 강조된 책=챕터, 잠금 없이 자유 선택
+                    <BookshelfTrackMap trackId={track.id} chapters={track.chapters} onEnter={enterChapter} />
                   ) : (
                     // 그 외 트랙: 카드 목록형 (지도와 다른 방식). 잠금 규칙은 동일하게 적용.
                     <div className="space-y-3">
