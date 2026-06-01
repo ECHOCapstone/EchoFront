@@ -4,9 +4,11 @@
 
 import {
   AlertTriangle,
+  Briefcase,
   Bus,
   CalendarCheck,
   Car,
+  Clapperboard,
   Cloud,
   Coffee,
   GraduationCap,
@@ -16,6 +18,7 @@ import {
   Library,
   Mail,
   MapPin,
+  MessageCircle,
   Monitor,
   Navigation,
   Phone,
@@ -49,6 +52,11 @@ const RULES: Rule[] = [
   { keywords: ['은행', '환전', '계좌', 'atm'], visual: { Icon: Landmark, bg: 'bg-teal-100', fg: 'text-teal-600' } },
   { keywords: ['쇼핑', '상점', '마트', '백화점', '구매', '계산'], visual: { Icon: ShoppingBag, bg: 'bg-pink-100', fg: 'text-pink-600' } },
   { keywords: ['학교', '수업', '교실', '시험', '학원'], visual: { Icon: GraduationCap, bg: 'bg-violet-100', fg: 'text-violet-600' } },
+  { keywords: ['학술', '논문', '세미나', '학회'], visual: { Icon: GraduationCap, bg: 'bg-violet-100', fg: 'text-violet-600' } },
+  { keywords: ['콘텐츠', '동영상', '영상', '편집', '유튜브', '촬영', '제작'], visual: { Icon: Clapperboard, bg: 'bg-purple-100', fg: 'text-purple-600' } },
+  { keywords: ['사교', '모임', '친목', '소셜', '파티'], visual: { Icon: MessageCircle, bg: 'bg-sky-100', fg: 'text-sky-600' } },
+  // 비즈니스 발표 — lucide 에 넥타이가 없어 서류가방으로 대체. '학술' 규칙 뒤라 학술 발표와 안 겹친다.
+  { keywords: ['비즈니스', '발표', '프레젠테이션', '프레젠', '미팅'], visual: { Icon: Briefcase, bg: 'bg-blue-100', fg: 'text-blue-700' } },
   { keywords: ['사무실', '사무', '오피스', '회사', '직장', '업무', '회의'], visual: { Icon: Monitor, bg: 'bg-slate-100', fg: 'text-slate-600' } },
   { keywords: ['기차', '지하철', '전철'], visual: { Icon: Train, bg: 'bg-cyan-100', fg: 'text-cyan-700' } },
   { keywords: ['버스', '정류장'], visual: { Icon: Bus, bg: 'bg-lime-100', fg: 'text-lime-700' } },
