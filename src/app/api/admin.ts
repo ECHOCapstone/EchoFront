@@ -7,7 +7,9 @@ import type {
   Prompt,
   ScriptDetail,
   ScriptSummary,
+  SeedFileStatus,
   Setting,
+  SystemStatus,
   TrackSummary,
 } from './types';
 
@@ -95,4 +97,25 @@ export const adminApi = {
   // yaml 기본값으로 초기화. 응답은 복원된 설정.
   resetSetting: (key: string) =>
     apiClient.delete<Setting>(`/api/admin/settings/${encodeURIComponent(key)}`),
+
+  // ----- 영구 저장 / 시드 재적용 / 시스템 상태 -----
+
+  // 현재 DB 트리를 tracks.yaml 로 직렬화해 외부 영구 저장본에 기록한다.
+  persistTracks: () => apiClient.post<SeedFileStatus>('/api/admin/tracks/persist'),
+  // 학습 데이터를 비우고 외부 영구 저장본 또는 classpath 기본값으로 다시 시드한다.
+  resetTracksToSeed: () => apiClient.post<SeedFileStatus>('/api/admin/tracks/reset'),
+  getTracksSeedInfo: () => apiClient.get<SeedFileStatus>('/api/admin/tracks/seed-info'),
+
+  // 모든 프롬프트 편집본을 한 번에 classpath 기본값으로 되돌린다.
+  resetPromptsToDefaults: () => apiClient.post<Prompt[]>('/api/admin/prompts/reset'),
+  getPromptsSeedInfo: () => apiClient.get<SeedFileStatus>('/api/admin/prompts/seed-info'),
+
+  // 현재 DB 오버라이드를 settings-overrides.yaml 로 영구 저장한다.
+  persistSettings: () => apiClient.post<SeedFileStatus>('/api/admin/settings/persist'),
+  // 모든 오버라이드와 영구 저장본을 지워 yaml 공장 기본값으로 되돌린다.
+  resetSettingsToDefaults: () => apiClient.post<SeedFileStatus>('/api/admin/settings/reset'),
+  getSettingsSeedInfo: () => apiClient.get<SeedFileStatus>('/api/admin/settings/seed-info'),
+
+  // 모델 서버 / LLM / Flyway / 영구 저장본 상태를 한 번에 조회한다.
+  getSystemStatus: () => apiClient.get<SystemStatus>('/api/admin/system/status'),
 };

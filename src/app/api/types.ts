@@ -69,6 +69,21 @@ export type Setting = {
   overridden: boolean;
 };
 
+// 어드민 영구 저장본 파일 한 건의 상태. exists 가 false 면 공장 기본값으로 동작 중.
+export type SeedFileStatus = {
+  exists: boolean;
+  lastModified: string | null;
+  path: string;
+};
+
+// 시스템 상태 대시보드 응답.
+export type SystemStatus = {
+  modelServer: { reachable: boolean; activeModel: string | null };
+  llm: { geminiAvailable: boolean };
+  database: { latestMigration: string | null; appliedAt: string | null; totalMigrations: number };
+  seedFiles: { domain: string; supportsExplicitPersist: boolean; status: SeedFileStatus }[];
+};
+
 export type TokenResponse = {
   accessToken: string;
   tokenType: string;

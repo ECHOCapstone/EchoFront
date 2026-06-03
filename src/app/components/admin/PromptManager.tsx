@@ -1,11 +1,12 @@
 // LLM 프롬프트 관리 섹션. 목록에서 하나를 골라 본문을 편집(재정의)하거나 기본값으로 되돌린다.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
-import { adminApi, type Prompt } from '../../api';
+import { adminApi, type Prompt, type SeedFileStatus } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
+import SeedPersistActions from './SeedPersistActions';
 
 export default function PromptManager() {
   const { data, loading, error, setData } = useApiResource(
@@ -15,6 +16,19 @@ export default function PromptManager() {
   );
   const prompts = data ?? [];
   const [selected, setSelected] = useState<Prompt | null>(null);
+  const [seedStatus, setSeedStatus] = useState<SeedFileStatus | null>(null);
+
+  useEffect(() => {
+    adminApi.getPromptsSeedInfo().then(setSeedStatus).catch(() => setSeedStatus(null));
+  }, []);
+
+  const handleResetAll = async () => {
+    const restored = await adminApi.resetPromptsToDefaults();
+    setData(() => restored);
+    setSelected(null);
+    toast.success('모든 프롬프트를 기본값으로 되돌렸습니다.');
+    return await adminApi.getPromptsSeedInfo();
+  };
 
   const applyUpdate = (updated: Prompt) => {
     setData((prev) => (prev ?? []).map((p) => (p.key === updated.key ? updated : p)));
@@ -27,8 +41,19 @@ export default function PromptManager() {
 
   return (
     <section className="bg-white rounded-2xl border-2 border-gray-200 p-5">
-      <h2 className="text-lg font-bold text-gray-900 mb-1">프롬프트</h2>
-      <p className="text-sm text-gray-500 mb-4">피드백 생성에 쓰는 LLM 프롬프트를 편집합니다.</p>
+      <div className="flex items-start justify-between mb-4 gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">프롬프트</h2>
+          <p className="text-sm text-gray-500">피드백 생성에 쓰는 LLM 프롬프트를 편집합니다.</p>
+        </div>
+        <SeedPersistActions
+          status={seedStatus}
+          reset={handleResetAll}
+          resetConfirmMessage="모든 프롬프트의 편집본을 지우고 공장 기본값으로 되돌립니다. 진행하시겠습니까?"
+          resetLabel="모두 기본값으로"
+          onStatusChange={setSeedStatus}
+        />
+      </div>
 
       {loading && <p className="text-gray-500">불러오는 중...</p>}
       {error && <p className="text-red-500">{error}</p>}

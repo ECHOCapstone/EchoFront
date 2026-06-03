@@ -11,8 +11,9 @@ import ContentSection from './ContentSection';
 import PromptManager from './PromptManager';
 import PhonemeManager from './PhonemeManager';
 import SettingsManager from './SettingsManager';
+import SystemStatusSection from './SystemStatusSection';
 
-type TabKey = 'content' | 'llm' | 'prompt' | 'phoneme' | 'settings';
+type TabKey = 'content' | 'llm' | 'prompt' | 'phoneme' | 'settings' | 'system';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'content', label: '콘텐츠' },
@@ -20,6 +21,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'prompt', label: '프롬프트' },
   { key: 'phoneme', label: '음소' },
   { key: 'settings', label: '설정' },
+  { key: 'system', label: '상태' },
 ];
 
 export default function AdminPage() {
@@ -68,6 +70,7 @@ export default function AdminPage() {
           {tab === 'prompt' && <PromptManager />}
           {tab === 'phoneme' && <PhonemeManager />}
           {tab === 'settings' && <SettingsManager />}
+          {tab === 'system' && <SystemStatusSection />}
         </div>
       </div>
     </div>

@@ -1,11 +1,12 @@
 // 게임화 수치 / 메시지 설정 관리. 그룹별로 묶어 행마다 값을 편집(재정의)하거나 기본값으로 되돌린다.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { RotateCcw } from 'lucide-react';
-import { adminApi, type Setting } from '../../api';
+import { adminApi, type SeedFileStatus, type Setting } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
+import SeedPersistActions from './SeedPersistActions';
 
 // "gamification.passThreshold" → { group: "gamification", label: "passThreshold" }
 function splitKey(key: string): { group: string; label: string } {
@@ -31,6 +32,26 @@ export default function SettingsManager() {
   const apply = (updated: Setting) =>
     setData((prev) => (prev ?? []).map((s) => (s.key === updated.key ? updated : s)));
 
+  const [seedStatus, setSeedStatus] = useState<SeedFileStatus | null>(null);
+
+  useEffect(() => {
+    adminApi.getSettingsSeedInfo().then(setSeedStatus).catch(() => setSeedStatus(null));
+  }, []);
+
+  const handlePersist = async () => {
+    const next = await adminApi.persistSettings();
+    toast.success('현재 설정 오버라이드를 영구 저장했습니다.');
+    return next;
+  };
+
+  const handleReset = async () => {
+    const next = await adminApi.resetSettingsToDefaults();
+    const fresh = await adminApi.listSettings();
+    setData(() => fresh);
+    toast.success('설정을 yaml 기본값으로 되돌렸습니다.');
+    return next;
+  };
+
   const groups = useMemo(() => {
     const map = new Map<string, Setting[]>();
     for (const setting of settings) {
@@ -44,10 +65,21 @@ export default function SettingsManager() {
 
   return (
     <section className="bg-white rounded-2xl border-2 border-gray-200 p-5">
-      <h2 className="text-lg font-bold text-gray-900 mb-1">설정</h2>
-      <p className="text-sm text-gray-500 mb-4">
-        게임화 수치와 안내 문구를 런타임에 바꿉니다. 되돌리려면 초기화를 누르세요.
-      </p>
+      <div className="flex items-start justify-between mb-4 gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">설정</h2>
+          <p className="text-sm text-gray-500">
+            게임화 수치와 안내 문구를 런타임에 바꿉니다. 영구 저장을 누르면 settings-overrides.yaml 에 기록되어 새 인스턴스에서도 같은 값으로 시작합니다.
+          </p>
+        </div>
+        <SeedPersistActions
+          status={seedStatus}
+          persist={handlePersist}
+          reset={handleReset}
+          resetConfirmMessage="모든 오버라이드와 영구 저장본을 지우고 yaml 기본값으로 되돌립니다. 진행하시겠습니까?"
+          onStatusChange={setSeedStatus}
+        />
+      </div>
 
       {loading && <p className="text-gray-500">불러오는 중...</p>}
       {error && <p className="text-red-500">{error}</p>}

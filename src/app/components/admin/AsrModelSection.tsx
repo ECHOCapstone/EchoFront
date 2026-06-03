@@ -4,12 +4,13 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { RefreshCw } from 'lucide-react';
 import { adminApi } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
 
 export default function AsrModelSection() {
-  const { data, loading, error, setData } = useApiResource(
+  const { data, loading, error, setData, reload } = useApiResource(
     () => adminApi.getModelServerConfig(),
     [],
     { errorFallback: '음소인식 모델 설정을 불러오지 못했습니다.' }
@@ -17,6 +18,11 @@ export default function AsrModelSection() {
 
   const [model, setModel] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const handleRefresh = () => {
+    if (loading) return;
+    reload();
+  };
 
   // 응답이 도착하면 폼을 현재 적용값으로 초기화한다.
   useEffect(() => {
@@ -49,10 +55,21 @@ export default function AsrModelSection() {
       {error && <p className="text-red-500">{error}</p>}
 
       {data && !data.serverAvailable && (
-        <p className="text-amber-600 text-sm mb-3">
-          모델 서버에 연결할 수 없어 후보를 불러오지 못했습니다. 모델 서버 기동 후 다시 시도하세요.
-          {data.selected && <> (저장된 선택값: <span className="font-medium">{data.selected}</span>)</>}
-        </p>
+        <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+          <div className="flex-1 text-amber-700 text-sm">
+            모델 서버에 연결할 수 없어 후보를 불러오지 못했습니다.
+            {data.selected && <> 저장된 선택값: <span className="font-medium">{data.selected}</span></>}
+          </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-1 px-2 h-8 text-xs font-medium rounded-md border border-amber-300 bg-white text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+          >
+            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+            <span>재시도</span>
+          </button>
+        </div>
       )}
 
       {data && data.serverAvailable && (

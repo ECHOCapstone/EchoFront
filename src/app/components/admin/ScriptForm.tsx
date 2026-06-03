@@ -30,6 +30,7 @@ export default function ScriptForm({
   const [content, setContent] = useState(initial?.content ?? '');
   const [difficulty, setDifficulty] = useState<Difficulty | ''>(initial?.difficulty ?? '');
   const [practiceWord, setPracticeWord] = useState(initial?.practiceWord ?? '');
+  const [masteryBadgeName, setMasteryBadgeName] = useState(initial?.masteryBadgeName ?? '');
   const [steps, setSteps] = useState<StepDraft[]>(
     initial ? toDrafts(initial.steps) : [{ kind: 'RECORD', prompt: '', targetText: '' }]
   );
@@ -60,6 +61,7 @@ export default function ScriptForm({
       content: content.trim(),
       difficulty: difficulty || undefined,
       practiceWord: practiceWord.trim() || undefined,
+      masteryBadgeName: masteryBadgeName.trim() || undefined,
       steps: apiSteps,
     };
     try {
@@ -109,6 +111,12 @@ export default function ScriptForm({
           className="flex-1 h-10 px-3 border-2 border-gray-300 rounded-lg focus:border-brand-500"
         />
       </div>
+      <input
+        value={masteryBadgeName}
+        onChange={(e) => setMasteryBadgeName(e.target.value)}
+        placeholder="완료 배지 이름 (선택)"
+        className="w-full h-10 px-3 border-2 border-gray-300 rounded-lg focus:border-brand-500"
+      />
 
       <div>
         <div className="flex items-center justify-between mb-2">
