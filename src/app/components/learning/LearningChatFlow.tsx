@@ -18,6 +18,7 @@ import RecordButton from '../RecordButton';
 import { useRecorder } from '../../hooks/useRecorder';
 import { useTtsPlayer } from '../../hooks/useTtsPlayer';
 import type { CanonicalWord, PhonemeError, PhonemeTip, RecordingResult, SpeechRate, WrongWord } from '../../api';
+import { normalizePhoneme } from '../../lib/articulation';
 import { notifyApiError } from '../../lib/notify';
 import MicPermissionModal from './MicPermissionModal';
 
@@ -71,6 +72,8 @@ type ChatItem =
       // 모델 서버 발화 속도 분류 (FAST / NORMAL / SLOW). FAST 일 때만 사용자 안내 배지를 띄운다.
       speechRate: SpeechRate;
       alignment: AlignmentSnapshot;
+      // 백엔드가 같이 보낸 합격선 (게임화 설정). 게이지가 이 값으로 합격선 마커를 그린다.
+      passThreshold: number | null;
     };
 
 export default function LearningChatFlow({
@@ -176,6 +179,7 @@ export default function LearningChatFlow({
             wrongWords: uploaded.wrongWords,
             canonicalWords: uploaded.canonicalWords ?? [],
           },
+          passThreshold: uploaded.passThreshold ?? null,
         },
       ]);
     } catch (err) {
@@ -266,20 +270,45 @@ export default function LearningChatFlow({
                   : 'text-gray-900';
           // primary CTA 는 passed 면 "다음으로", 아니면 "다시 발음하기".
           const primaryAdvance = passed;
+          // 점수 게이지: 합격선(passThreshold) 을 화면에서도 명시해 학습자가 "얼마나 더" 가 필요한지 직관할 수 있게 한다.
+          // 백엔드가 응답에 같이 실어 보내는 합격선을 그대로 쓴다 — 어드민이 settings 에서 합격선을
+          // 바꿔도 게이지 마커가 즉시 따라온다. 응답 누락 시엔 기본 80 으로 폴백.
+          const passThreshold = item.passThreshold ?? 80;
+          const scoreGaugeColor = passed ? 'bg-green-500' : retryRecommended ? 'bg-orange-400' : 'bg-gray-400';
           return (
             <BotBubble key={item.key}>
-              <div className="flex items-start gap-2 mb-1">
+              {/* 헤드라인 + 점수 + 게이지를 한 묶음으로 잡아 시각 위계의 정점에 둔다.
+                  - 헤드라인: 가장 큰 굵은 텍스트
+                  - 점수: 그보다 약간 작지만 컬러 강조
+                  - 게이지: 80 합격선을 점선으로 표시해 "얼마나 더" 가 직관됨 */}
+              <div className="flex items-start gap-2 mb-2">
                 {HeadlineIcon && (
-                  <HeadlineIcon size={20} className={`${headlineIconClass} flex-shrink-0 mt-0.5`} />
+                  <HeadlineIcon size={22} className={`${headlineIconClass} flex-shrink-0 mt-0.5`} />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-base font-semibold leading-relaxed ${headlineColor}`}>
+                  <p className={`text-lg font-bold leading-tight ${headlineColor}`}>
                     {headline}
                   </p>
                   {item.score !== null && (
-                    <p className={`text-2xl font-bold leading-tight ${scoreColor}`}>
-                      {item.score.toFixed(1)}<span className="text-sm font-medium text-gray-500 ml-1">점</span>
-                    </p>
+                    <>
+                      <p className={`text-3xl font-extrabold leading-tight mt-1 ${scoreColor}`}>
+                        {item.score.toFixed(1)}<span className="text-sm font-medium text-gray-500 ml-1">점</span>
+                      </p>
+                      <div className="relative mt-1.5 h-1.5 w-full max-w-[180px] rounded-full bg-gray-200 overflow-hidden">
+                        <div
+                          className={`absolute inset-y-0 left-0 ${scoreGaugeColor} transition-all`}
+                          style={{ width: `${Math.max(0, Math.min(100, item.score))}%` }}
+                        />
+                        <div
+                          className="absolute inset-y-0 w-px bg-gray-400"
+                          style={{ left: `${passThreshold}%` }}
+                          aria-label={`합격선 ${passThreshold}점`}
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-0.5 max-w-[180px]">
+                        합격선 {passThreshold}점
+                      </p>
+                    </>
                   )}
                 </div>
               </div>
@@ -299,17 +328,38 @@ export default function LearningChatFlow({
                   ))}
                 </ul>
               )}
-              {item.phonemeTips.length > 0 && (
-                <div className="mb-3 rounded-lg bg-brand-50 border border-brand-100 px-3 py-2 space-y-1">
-                  {item.phonemeTips.map((tip, i) => (
-                    <p key={`tip-${item.key}-${i}`} className="text-xs text-brand-900 leading-snug">
-                      <span className="font-bold mr-1">{tip.phoneme}</span>
-                      {tip.koreanCue && <span className="mr-1">({tip.koreanCue})</span>}
-                      <span>{tip.tip}</span>
-                    </p>
-                  ))}
-                </div>
-              )}
+              {/* 약점 음소를 한국식 음차 chip 으로만 인라인 노출. 박스를 두면 음소 보기 안의 칩과
+                  정보가 중복되고 시각 부담이 커지므로, 여기는 "어떤 음소가 약점인지" 알림 역할만 한다.
+                  자세한 발음 설명은 음소 보기 → 음소 칩 클릭 → 조음 카드에서 본다.
+
+                  LLM 이 고른 phonemeTips 가 실제 alignment errors 와 어긋날 때(예: 실제로는 안 틀린
+                  음소를 약점으로 표기) 가 있어, 음소 보기의 빨강 음소와 일치하도록 substitution/deletion
+                  의 canonical 음소 집합과 교집합 한 것만 노출한다. 둘 다 비면 줄 자체를 숨긴다. */}
+              {(() => {
+                const wrongPhonemes = new Set(
+                  item.alignment.errors
+                    .filter((e) => (e.op === 'substitution' || e.op === 'deletion') && e.canonical)
+                    .map((e) => normalizePhoneme(e.canonical as string))
+                );
+                const validTips = item.phonemeTips.filter((t) =>
+                  wrongPhonemes.has(normalizePhoneme(t.phoneme))
+                );
+                if (validTips.length === 0) return null;
+                return (
+                  <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                    <span>약점 음소</span>
+                    {validTips.map((tip, i) => (
+                      <span
+                        key={`tip-${item.key}-${i}`}
+                        className="inline-flex items-baseline gap-0.5 rounded-md bg-red-50 border border-red-200 px-1.5 py-0.5 font-mono text-red-700"
+                      >
+                        <span className="font-bold">{tip.phoneme}</span>
+                        {tip.koreanCue && <span className="text-[10px] text-red-500">({tip.koreanCue})</span>}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
               <div className="mb-3">
                 <FeedbackPhonemeSection
                   targetText={item.alignment.targetText}
@@ -320,26 +370,28 @@ export default function LearningChatFlow({
                 />
               </div>
               {isActive && (
-                <div className="flex gap-2">
+                // primary 가 2/3 폭, secondary 가 1/3 폭. secondary 는 텍스트만으로 처리해
+                // 학습자가 시스템 권유 (다시 / 다음) 를 한눈에 알아채게 한다.
+                <div className="flex gap-2 items-stretch">
                   <button
                     onClick={handleRetry}
                     disabled={busyStep}
-                    className={`flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-medium rounded-xl transition-colors disabled:opacity-50 ${
+                    className={`flex items-center justify-center gap-1.5 h-11 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 ${
                       primaryAdvance
-                        ? 'bg-white border-2 border-gray-300 hover:border-orange-400 hover:bg-orange-50 text-gray-900'
-                        : 'bg-orange-500 hover:bg-orange-600 text-white border-2 border-orange-500'
+                        ? 'flex-[1] bg-transparent text-gray-500 hover:text-orange-500 hover:bg-orange-50'
+                        : 'flex-[2] bg-orange-500 hover:bg-orange-600 text-white border-2 border-orange-500 shadow-sm'
                     }`}
                   >
-                    <RotateCcw size={16} className={primaryAdvance ? 'text-orange-500' : 'text-white'} />
+                    <RotateCcw size={16} className={primaryAdvance ? 'text-gray-400' : 'text-white'} />
                     <span>다시 발음하기</span>
                   </button>
                   <button
                     onClick={handleAdvance}
                     disabled={busyStep}
-                    className={`flex-1 h-11 text-sm font-medium rounded-xl transition-colors disabled:opacity-50 ${
+                    className={`h-11 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 ${
                       primaryAdvance
-                        ? 'bg-brand-500 hover:bg-brand-600 text-white'
-                        : 'bg-white border-2 border-gray-300 hover:border-brand-400 hover:bg-brand-50 text-gray-900'
+                        ? 'flex-[2] bg-brand-500 hover:bg-brand-600 text-white shadow-sm'
+                        : 'flex-[1] bg-transparent text-gray-500 hover:text-brand-500 hover:bg-brand-50'
                     }`}
                   >
                     {isLast ? finalAdvanceLabel : advanceLabel}

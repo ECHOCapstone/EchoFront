@@ -65,7 +65,7 @@ export default function SettingsManager() {
 
   return (
     <section className="bg-white rounded-2xl border-2 border-gray-200 p-5">
-      <div className="flex items-start justify-between mb-4 gap-3">
+      <div className="mb-4 space-y-3">
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-1">설정</h2>
           <p className="text-sm text-gray-500">

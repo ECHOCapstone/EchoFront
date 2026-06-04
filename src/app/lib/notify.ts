@@ -15,12 +15,25 @@ const KOREAN_ERROR_MESSAGES: Record<string, string> = {
   LOGIN_FAILED: '아이디 또는 비밀번호가 일치하지 않습니다.',
 };
 
-// 에러 사용자 알림의 단일 진입점. ApiException 이면 코드에 따른 한국어 매핑을 우선 사용하고,
-// 매핑이 없으면 백엔드가 내려준 메시지를, 그 외에는 fallback 메시지를 토스트로 노출한다.
+// 에러 사용자 알림의 단일 진입점. ApiException 이면:
+//   1) 백엔드가 ErrorCode 의 default 가 아닌 구체 message 를 같이 내려줬으면 그쪽을 우선 (디버깅·안내에 가장
+//      도움 되는 한 줄). 예: "sessionSentenceId is required", "RECORD 단계는 targetText 가 필요합니다".
+//   2) 그게 없으면 한국어 매핑 사전을 사용.
+//   3) 사전에도 없으면 백엔드 message (있을 때) → fallback 순.
+// 이전 구조는 매핑을 무조건 우선해 백엔드의 구체 메시지를 가렸다 — 학습자가 "어떻게 고쳐야 할지 모름".
 export function notifyApiError(err: unknown, fallback: string): void {
   if (err instanceof ApiException) {
     const localized = KOREAN_ERROR_MESSAGES[err.code];
-    toast.error(localized ?? err.message);
+    const backendMessage = err.message?.trim();
+    // 백엔드가 ErrorCode 의 default 가 아닌 구체 message 를 보냈으면 그쪽이 더 유용하다.
+    // ErrorCode default 와 일치하지 않거나, 매핑이 아예 없으면 백엔드 message 를 우선.
+    const isGenericDefault =
+      backendMessage === '잘못된 요청입니다.' || backendMessage === '입력 값을 확인해 주세요.';
+    if (backendMessage && !isGenericDefault) {
+      toast.error(backendMessage);
+      return;
+    }
+    toast.error(localized ?? backendMessage ?? fallback);
     return;
   }
   toast.error(fallback);

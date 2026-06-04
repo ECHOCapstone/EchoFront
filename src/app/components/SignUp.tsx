@@ -142,7 +142,9 @@ export default function SignUp() {
           pendingToken: oauthCtx.pendingToken,
           username: formData.id,
           nickname: formData.nickname || oauthCtx.nicknameHint,
-          agreedTerms: true,
+          // 체크박스 상태를 그대로 전달 — validation 이 이미 true 를 보장하지만, 향후 validation 이 약해질
+          // 때 동의 안 한 사용자가 가입되지 않도록 하드코딩 true 대신 실제 상태를 싣는다.
+          agreedTerms: agreed,
         });
         await acceptOAuthToken(tokenResponse.accessToken);
         navigate(paths.main, { replace: true });
@@ -153,7 +155,7 @@ export default function SignUp() {
         password: formData.password,
         nickname: formData.nickname,
         email: formData.email,
-        agreedTerms: true,
+        agreedTerms: agreed,
       });
       setIsSignUpComplete(true);
     } catch (err) {

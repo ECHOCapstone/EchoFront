@@ -28,7 +28,7 @@ export default function SystemStatusSection() {
           type="button"
           onClick={handleRefresh}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 h-9 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 h-9 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 flex-shrink-0 whitespace-nowrap"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           <span>새로고침</span>

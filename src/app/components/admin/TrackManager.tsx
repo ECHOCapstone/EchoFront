@@ -91,23 +91,23 @@ export default function TrackManager({
 
   return (
     <section className="bg-white rounded-2xl border-2 border-gray-200 p-5">
-      <div className="flex items-start justify-between mb-4 gap-3">
-        <h2 className="text-lg font-bold text-gray-900">학습 트랙</h2>
-        <div className="flex items-start gap-3">
-          <SeedPersistActions
-            status={seedStatus}
-            persist={handlePersistTracks}
-            reset={handleResetTracks}
-            resetConfirmMessage="현재 학습 데이터를 모두 비우고 시드를 다시 적용합니다. 진행하시겠습니까?"
-            onStatusChange={setSeedStatus}
-          />
+      <div className="mb-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-gray-900">학습 트랙</h2>
           <button
             onClick={openCreate}
-            className="flex items-center gap-1 h-9 px-3 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors"
+            className="flex items-center gap-1 h-9 px-3 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors flex-shrink-0"
           >
             <Plus size={16} /> 추가
           </button>
         </div>
+        <SeedPersistActions
+          status={seedStatus}
+          persist={handlePersistTracks}
+          reset={handleResetTracks}
+          resetConfirmMessage="현재 DB 의 트랙 데이터를 비우고 시드(영구 저장본이 있으면 그쪽, 없으면 공장 기본값)에서 다시 불러옵니다. 영구 저장 안 한 admin 추가 트랙과 그 트랙의 학습 기록도 함께 사라질 수 있습니다. 진행하시겠습니까?"
+          onStatusChange={setSeedStatus}
+        />
       </div>
 
       {loading && <p className="text-gray-500">불러오는 중...</p>}

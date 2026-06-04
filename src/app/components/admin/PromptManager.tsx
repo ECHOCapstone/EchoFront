@@ -41,7 +41,7 @@ export default function PromptManager() {
 
   return (
     <section className="bg-white rounded-2xl border-2 border-gray-200 p-5">
-      <div className="flex items-start justify-between mb-4 gap-3">
+      <div className="mb-4 space-y-3">
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-1">프롬프트</h2>
           <p className="text-sm text-gray-500">피드백 생성에 쓰는 LLM 프롬프트를 편집합니다.</p>
