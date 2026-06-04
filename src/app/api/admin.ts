@@ -1,5 +1,8 @@
 import { apiClient } from './client';
 import type {
+  Badge,
+  BadgeCatalog,
+  BadgeInput,
   Difficulty,
   LlmConfig,
   ModelServerConfig,
@@ -118,4 +121,15 @@ export const adminApi = {
 
   // 모델 서버 / LLM / Flyway / 영구 저장본 상태를 한 번에 조회한다.
   getSystemStatus: () => apiClient.get<SystemStatus>('/api/admin/system/status'),
+
+  // ----- 시스템 배지 (누적/스트릭) -----
+  listBadges: () => apiClient.get<BadgeCatalog>('/api/admin/badges'),
+  createBadge: (input: BadgeInput) =>
+    apiClient.post<Badge>('/api/admin/badges', { json: input }),
+  updateBadge: (id: string, input: BadgeInput) =>
+    apiClient.patch<Badge>(`/api/admin/badges/${encodeURIComponent(id)}`, { json: input }),
+  deleteBadge: (id: string) =>
+    apiClient.delete<void>(`/api/admin/badges/${encodeURIComponent(id)}`),
+  persistBadges: () => apiClient.post<SeedFileStatus>('/api/admin/badges/persist'),
+  resetBadgesToDefaults: () => apiClient.post<SeedFileStatus>('/api/admin/badges/reset'),
 };

@@ -190,6 +190,8 @@ export type RecordingResult = {
   speechRate: SpeechRate;
   // 단어별 canonical 음소. 비어 있으면 (조회 응답 등) 전체 음소를 한 줄로 폴백 표시한다.
   canonicalWords: CanonicalWord[];
+  // 합격선 점수 (어드민이 바꿀 수 있음). 조회 응답에는 null. 점수 게이지가 이 값으로 합격선 마커 위치를 정한다.
+  passThreshold: number | null;
   createdAt: string;
 };
 
@@ -279,4 +281,25 @@ export type TrackDetail = {
   description: string;
   displayOrder: number;
   chapters: ChapterSummary[];
+};
+
+// 시스템 누적 배지 한 정의. 어드민이 추가/수정/삭제 가능. condition 은 백엔드 enum (BadgeCondition) 의
+// 식별자 — availableConditions 가 어드민 UI 가 보여줄 선택지를 같이 내려준다.
+export type Badge = {
+  id: string;
+  name: string;
+  condition: string;
+  threshold: number;
+};
+
+export type BadgeCatalog = {
+  badges: Badge[];
+  availableConditions: string[];
+};
+
+export type BadgeInput = {
+  id: string;
+  name: string;
+  condition: string;
+  threshold: number;
 };
