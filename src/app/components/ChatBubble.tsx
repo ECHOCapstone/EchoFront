@@ -9,7 +9,7 @@ export function BotBubble({ children }: { children: ReactNode }) {
         <img src={booAvatar} alt="코치" className="w-full h-full object-contain" />
       </div>
 
-      <div className="relative flex-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 ml-2">
+      <div className="relative flex-1 min-w-0 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 ml-2">
         {/* 말풍선 꼬리 (테두리용 바깥 삼각형) */}
         <span
           className="absolute top-3 -left-2 w-0 h-0

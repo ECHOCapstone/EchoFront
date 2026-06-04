@@ -7,12 +7,14 @@ import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { paths } from '../../lib/paths';
 import LlmSettingsSection from './LlmSettingsSection';
 import AsrModelSection from './AsrModelSection';
+import BadgeManager from './BadgeManager';
 import ContentSection from './ContentSection';
 import PromptManager from './PromptManager';
 import PhonemeManager from './PhonemeManager';
 import SettingsManager from './SettingsManager';
+import SystemStatusSection from './SystemStatusSection';
 
-type TabKey = 'content' | 'llm' | 'prompt' | 'phoneme' | 'settings';
+type TabKey = 'content' | 'llm' | 'prompt' | 'phoneme' | 'settings' | 'badge' | 'system';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'content', label: '콘텐츠' },
@@ -20,6 +22,8 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'prompt', label: '프롬프트' },
   { key: 'phoneme', label: '음소' },
   { key: 'settings', label: '설정' },
+  { key: 'badge', label: '배지' },
+  { key: 'system', label: '상태' },
 ];
 
 export default function AdminPage() {
@@ -41,12 +45,12 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold text-gray-900">관리자</h1>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="grid grid-cols-3 gap-2 mb-6">
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex-1 min-w-[64px] h-10 rounded-xl text-sm font-medium transition-colors ${
+              className={`h-10 rounded-xl text-sm font-medium transition-colors ${
                 tab === t.key
                   ? 'bg-brand-500 text-white'
                   : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-brand-300'
@@ -68,6 +72,8 @@ export default function AdminPage() {
           {tab === 'prompt' && <PromptManager />}
           {tab === 'phoneme' && <PhonemeManager />}
           {tab === 'settings' && <SettingsManager />}
+          {tab === 'badge' && <BadgeManager />}
+          {tab === 'system' && <SystemStatusSection />}
         </div>
       </div>
     </div>

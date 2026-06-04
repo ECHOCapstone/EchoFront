@@ -1,12 +1,13 @@
 // 학습 트랙 관리 섹션. 목록 조회 + 생성/수정(인라인 폼) + 삭제.
 // 삭제는 백엔드가 챕터(스크립트)가 연결된 트랙을 막으므로, 그 경우 409 메시지를 토스트로 보여준다.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
-import { adminApi, type TrackInput, type TrackSummary } from '../../api';
+import { adminApi, type SeedFileStatus, type TrackInput, type TrackSummary } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
+import SeedPersistActions from './SeedPersistActions';
 
 const EMPTY_FORM: TrackInput = { title: '', description: '', displayOrder: 0 };
 
@@ -26,6 +27,25 @@ export default function TrackManager({
   const [editing, setEditing] = useState<'new' | number | null>(null);
   const [form, setForm] = useState<TrackInput>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [seedStatus, setSeedStatus] = useState<SeedFileStatus | null>(null);
+
+  useEffect(() => {
+    adminApi.getTracksSeedInfo().then(setSeedStatus).catch(() => setSeedStatus(null));
+  }, []);
+
+  const handleResetTracks = async () => {
+    const next = await adminApi.resetTracksToSeed();
+    const fresh = await adminApi.listTracks();
+    setData(() => fresh);
+    toast.success('학습 데이터를 시드 상태로 재적용했습니다.');
+    return next;
+  };
+
+  const handlePersistTracks = async () => {
+    const next = await adminApi.persistTracks();
+    toast.success('현재 학습 트리를 영구 저장했습니다.');
+    return next;
+  };
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
@@ -71,14 +91,23 @@ export default function TrackManager({
 
   return (
     <section className="bg-white rounded-2xl border-2 border-gray-200 p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-gray-900">학습 트랙</h2>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1 h-9 px-3 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors"
-        >
-          <Plus size={16} /> 추가
-        </button>
+      <div className="mb-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-gray-900">학습 트랙</h2>
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1 h-9 px-3 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors flex-shrink-0"
+          >
+            <Plus size={16} /> 추가
+          </button>
+        </div>
+        <SeedPersistActions
+          status={seedStatus}
+          persist={handlePersistTracks}
+          reset={handleResetTracks}
+          resetConfirmMessage="현재 DB 의 트랙 데이터를 비우고 시드(영구 저장본이 있으면 그쪽, 없으면 공장 기본값)에서 다시 불러옵니다. 영구 저장 안 한 admin 추가 트랙과 그 트랙의 학습 기록도 함께 사라질 수 있습니다. 진행하시겠습니까?"
+          onStatusChange={setSeedStatus}
+        />
       </div>
 
       {loading && <p className="text-gray-500">불러오는 중...</p>}

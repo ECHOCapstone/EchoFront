@@ -39,7 +39,7 @@ import { useApiResource } from '../hooks/useApiResource';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 import { markChapterComplete } from '../lib/trackProgress';
-import { celebrateChapter, celebrateTrack } from '../lib/reward';
+import { celebrateTrack } from '../lib/reward';
 
 type TrackContext = { trackId: number; chapterIndex: number };
 
@@ -169,10 +169,10 @@ export default function PronunciationPractice() {
 
   const onCompleteHandler = trackContext
     ? () => {
-        // 방금 끝낸 챕터를 완료 처리(지도의 잠금 해제·체크 표시 근거). 첫 완료면 보상 연출.
-        const firstClear = markChapterComplete(trackContext.trackId, trackContext.chapterIndex);
+        // 방금 끝낸 챕터를 완료 처리(지도의 잠금 해제·체크 표시 근거).
+        // 챕터 confetti 는 FeedbackFlow 의 EXP 팝업이 뜰 때 이미 터졌으므로 여기선 진행 처리만.
+        markChapterComplete(trackContext.trackId, trackContext.chapterIndex);
         if (!track) {
-          if (firstClear) celebrateChapter();
           navigate(paths.trackOverview(trackContext.trackId));
           return;
         }
@@ -182,7 +182,6 @@ export default function PronunciationPractice() {
           setTrackCompleteOpen(true);
           return;
         }
-        if (firstClear) celebrateChapter();
         const nextIndex = trackContext.chapterIndex + 1;
         const nextChapter = track.chapters[nextIndex];
         navigate(

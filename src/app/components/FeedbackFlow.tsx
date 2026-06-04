@@ -11,6 +11,7 @@ import { feedbackApi, type Feedback, type PracticeItem } from '../api';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
+import { celebrateChapter } from '../lib/reward';
 import booExp from '@/assets/boo-pic/BOO12-2.png';
 
 interface FeedbackFlowProps {
@@ -64,6 +65,8 @@ export default function FeedbackFlow({
       setExpGained(gained > 0 ? gained : 0);
       await refresh();
       setShowExpPopup(true);
+      // EXP 팝업이 뜨는 순간 보상 confetti.
+      celebrateChapter();
     } catch (err) {
       notifyApiError(err, '학습 완료 처리에 실패했습니다.');
     } finally {

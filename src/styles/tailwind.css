@@ -15,3 +15,13 @@
 .animate-fade-out {
   animation: fadeOut 1s ease-out forwards;
 }
+
+/* 가로 스크롤은 유지하되 데스크톱에 그려지는 가로 스크롤바를 시각적으로 숨겨, 위 아래 두 줄 (정답 / 내 발음)
+   비교 표의 라벨 정렬이 깨지지 않게 한다. 모바일 native 스크롤바는 원래 안 보이므로 영향 없음. */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
