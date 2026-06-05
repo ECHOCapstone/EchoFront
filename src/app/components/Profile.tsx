@@ -9,11 +9,13 @@ import TextEditDialog from './TextEditDialog';
 import { authApi } from '../api';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
-import { notifyApiError } from '../lib/notify';
+import { notifyApiError, notifyInfo } from '../lib/notify';
+import { useConfirm } from './ConfirmProvider';
 
 export default function Profile() {
   const navigate = useNavigate();
   const { user, logout, refresh } = useAuth();
+  const confirm = useConfirm();
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [updatingNickname, setUpdatingNickname] = useState(false);
   const [nicknameDialogOpen, setNicknameDialogOpen] = useState(false);
@@ -21,9 +23,9 @@ export default function Profile() {
   const nickname = user?.nickname ?? '사용자';
   const email = user?.email ?? '';
 
-  const handlePasswordChange = () => alert('비밀번호 변경은 추후 제공될 예정입니다.');
+  const handlePasswordChange = () => notifyInfo('비밀번호 변경은 추후 제공될 예정입니다.');
   const handleNotificationToggle = () => setNotificationEnabled((v) => !v);
-  const handleTermsAndPolicy = () => alert('약관 및 정책은 추후 제공될 예정입니다.');
+  const handleTermsAndPolicy = () => notifyInfo('약관 및 정책은 추후 제공될 예정입니다.');
 
   const openNicknameDialog = () => {
     if (updatingNickname) return;
@@ -45,17 +47,21 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteAccount = () => {
-    if (confirm('정말로 회원탈퇴 하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
-      alert('회원탈퇴는 추후 제공될 예정입니다.');
-    }
+  const handleDeleteAccount = async () => {
+    const ok = await confirm({
+      title: '회원탈퇴',
+      description: '정말로 회원탈퇴 하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+      confirmLabel: '탈퇴',
+      destructive: true,
+    });
+    if (ok) notifyInfo('회원탈퇴는 추후 제공될 예정입니다.');
   };
 
-  const handleLogout = () => {
-    if (confirm('로그아웃 하시겠습니까?')) {
-      logout();
-      navigate(paths.login, { replace: true });
-    }
+  const handleLogout = async () => {
+    const ok = await confirm({ title: '로그아웃', description: '로그아웃 하시겠습니까?', confirmLabel: '로그아웃' });
+    if (!ok) return;
+    logout();
+    navigate(paths.login, { replace: true });
   };
 
   return (

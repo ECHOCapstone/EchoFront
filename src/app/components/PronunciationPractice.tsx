@@ -40,6 +40,7 @@ import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 import { markChapterComplete } from '../lib/trackProgress';
 import { celebrateTrack } from '../lib/reward';
+import { useConfirm } from './ConfirmProvider';
 
 type TrackContext = { trackId: number; chapterIndex: number };
 
@@ -68,6 +69,7 @@ function toLearningPrompt(step: LearningStep): LearningPrompt {
 
 export default function PronunciationPractice() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
 
   const scriptId = useMemo(() => readPositiveInt(searchParams.get('scriptId')), [searchParams]);
@@ -152,10 +154,9 @@ export default function PronunciationPractice() {
 
   // 학습 도중 "학습 끝내기" 버튼이 눌렸을 때 어디로 빠져나갈지. 트랙 모드면 트랙 상세, 아니면 트랙 목록.
   const exitDestination = trackContext ? paths.trackOverview(trackContext.trackId) : paths.tracks;
-  const handleEndLearning = () => {
-    if (confirm('학습을 끝내시겠습니까?')) {
-      navigate(exitDestination);
-    }
+  const handleEndLearning = async () => {
+    const ok = await confirm({ title: '학습 종료', description: '학습을 끝내시겠습니까?', confirmLabel: '끝내기' });
+    if (ok) navigate(exitDestination);
   };
 
   // 트랙 모드에서 다음 챕터/완주 처리. 단일 모드일 때는 undefined 를 반환하여

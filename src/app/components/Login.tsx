@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import Footer from './Footer';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
-import { notifyApiError } from '../lib/notify';
+import { notifyApiError, notifyError, notifyInfo } from '../lib/notify';
 import { getGoogleOAuthStartUrl } from '../api/auth';
 
 // 백엔드 OAuth2 실패 핸들러가 붙이는 ?oauthError=<code> 쿼리를 사용자 친화적 한국어 메시지로 매핑한다.
@@ -39,7 +39,7 @@ export default function Login() {
     const code = searchParams.get('oauthError');
     if (!code) return;
     const message = OAUTH_ERROR_MESSAGES[code] ?? 'Google 로그인에 실패했습니다.';
-    alert(message);
+    notifyError(message);
     // 같은 메시지가 새로고침/뒤로가기로 반복되지 않게 쿼리를 정리한다.
     window.history.replaceState(null, '', paths.login);
   }, [searchParams]);
@@ -60,7 +60,7 @@ export default function Login() {
 
   const handleSocialLogin = (provider: string) => {
     if (provider !== 'Google') {
-      alert(`${provider} 로그인은 아직 준비 중입니다.`);
+      notifyInfo(`${provider} 로그인은 아직 준비 중입니다.`);
       return;
     }
     if (submitting) return;

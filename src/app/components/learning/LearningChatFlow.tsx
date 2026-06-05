@@ -11,15 +11,13 @@
 // 부모는 prompts 가 바뀌면 key 로 컴포넌트를 다시 마운트해 채팅을 초기 상태로 리셋한다.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, Info, RotateCcw, Volume2 } from 'lucide-react';
-import { BotBubble, UserBubble } from '../ChatBubble';
-import FeedbackPhonemeSection from '../FeedbackPhonemeSection';
-import RecordButton from '../RecordButton';
+import { UserBubble } from '../ChatBubble';
 import { useRecorder } from '../../hooks/useRecorder';
 import { useTtsPlayer } from '../../hooks/useTtsPlayer';
-import type { CanonicalWord, PhonemeError, PhonemeTip, RecordingResult, SpeechRate, WrongWord } from '../../api';
-import { normalizePhoneme } from '../../lib/articulation';
+import type { RecordingResult } from '../../api';
 import { notifyApiError } from '../../lib/notify';
+import FeedbackBubble, { type FeedbackData } from './FeedbackBubble';
+import PromptBubble from './PromptBubble';
 import MicPermissionModal from './MicPermissionModal';
 
 // 채팅 흐름에 노출되는 한 단계. id 는 부모 도메인 (LearningStep / SessionSentence) 의 식별자를 그대로 쓴다.
@@ -44,37 +42,12 @@ interface LearningChatFlowProps {
   finalAdvanceLabel?: string;
 }
 
-type AlignmentSnapshot = {
-  targetText: string | null;
-  perceived: string[];
-  canonical: string[];
-  errors: PhonemeError[];
-  wrongWords: WrongWord[];
-  // 단어별 canonical 음소. 음소를 단어 경계로 잘라 보여줄 때 사용. 비어 있으면 한 줄 폴백.
-  canonicalWords: CanonicalWord[];
-};
-
+// 채팅 흐름의 한 항목. 봇 안내(bot-prompt) · 사용자 녹음 표시(user-record) · 피드백(bot-feedback) 셋 중 하나다.
+// 피드백의 실제 표현은 FeedbackBubble 이, 데이터 모양은 FeedbackData 가 책임진다.
 type ChatItem =
   | { kind: 'bot-prompt'; key: string; prompt: LearningPrompt }
   | { kind: 'user-record'; key: string; promptId: number; score: number | null }
-  | {
-      kind: 'bot-feedback';
-      key: string;
-      promptId: number;
-      guidanceKr: string;
-      score: number | null;
-      // 백엔드가 결정한 통과 여부 + 재학습 권고 — 프론트는 그대로 따른다 (SSOT).
-      passed: boolean;
-      retryRecommended: boolean;
-      strengths: string[];
-      weaknesses: string[];
-      phonemeTips: PhonemeTip[];
-      // 모델 서버 발화 속도 분류 (FAST / NORMAL / SLOW). FAST 일 때만 사용자 안내 배지를 띄운다.
-      speechRate: SpeechRate;
-      alignment: AlignmentSnapshot;
-      // 백엔드가 같이 보낸 합격선 (게임화 설정). 게이지가 이 값으로 합격선 마커를 그린다.
-      passThreshold: number | null;
-    };
+  | { kind: 'bot-feedback'; key: string; promptId: number; data: FeedbackData };
 
 export default function LearningChatFlow({
   prompts,
@@ -163,23 +136,25 @@ export default function LearningChatFlow({
           kind: 'bot-feedback',
           key: `f-${uploaded.id}`,
           promptId: currentPrompt.id,
-          guidanceKr: uploaded.guidanceKr ?? '',
-          score: uploaded.stepScore ?? null,
-          passed: uploaded.passed,
-          retryRecommended: uploaded.retryRecommended,
-          strengths: uploaded.strengths ?? [],
-          weaknesses: uploaded.weaknesses ?? [],
-          phonemeTips: uploaded.phonemeTips ?? [],
-          speechRate: uploaded.speechRate ?? 'NORMAL',
-          alignment: {
-            targetText: currentPrompt.target,
-            perceived: uploaded.perceived,
-            canonical: uploaded.canonical,
-            errors: uploaded.errors,
-            wrongWords: uploaded.wrongWords,
-            canonicalWords: uploaded.canonicalWords ?? [],
+          data: {
+            guidanceKr: uploaded.guidanceKr ?? '',
+            score: uploaded.stepScore ?? null,
+            passed: uploaded.passed,
+            retryRecommended: uploaded.retryRecommended,
+            strengths: uploaded.strengths ?? [],
+            weaknesses: uploaded.weaknesses ?? [],
+            phonemeTips: uploaded.phonemeTips ?? [],
+            speechRate: uploaded.speechRate ?? 'NORMAL',
+            alignment: {
+              targetText: currentPrompt.target,
+              perceived: uploaded.perceived,
+              canonical: uploaded.canonical,
+              errors: uploaded.errors,
+              wrongWords: uploaded.wrongWords,
+              canonicalWords: uploaded.canonicalWords ?? [],
+            },
+            passThreshold: uploaded.passThreshold ?? null,
           },
-          passThreshold: uploaded.passThreshold ?? null,
         },
       ]);
     } catch (err) {
@@ -239,166 +214,26 @@ export default function LearningChatFlow({
         }
 
         if (item.kind === 'bot-feedback') {
+          // 가장 최근 피드백이고 현재 prompt 와 일치할 때만 액션 버튼을 활성화한다.
           const isActive =
             !disabled &&
             !doneSignaled &&
             item.key === latestFeedbackKey &&
             currentPrompt !== null &&
             item.promptId === currentPrompt.id;
-          const isLast = promptIndex >= prompts.length - 1;
-          // 점수 임계와 LLM 판단을 합친 백엔드의 통과 신호 (passed) 와 재학습 권고 (retryRecommended) 를
-          // 그대로 따라 액션 강조와 헤더 메시지를 결정한다.
-          const passed = item.passed;
-          const retryRecommended = item.retryRecommended;
-          const headline = passed
-            ? '통과! 다음으로 넘어가도 좋아요.'
-            : retryRecommended
-              ? '한 번 더 시도해 볼까요?'
-              : '결과를 확인했어요.';
-          const headlineColor = passed ? 'text-green-600' : retryRecommended ? 'text-orange-500' : 'text-gray-900';
-          // 통과 / 재학습 권고 상태를 헤드라인 옆 아이콘으로 단번에 인식하게 한다.
-          const HeadlineIcon = passed ? CheckCircle2 : retryRecommended ? Info : null;
-          const headlineIconClass = passed ? 'text-green-500' : 'text-orange-500';
-          // 점수 색은 통과 / 권고 신호와 일치시켜 시각적 redundancy 를 준다.
-          const scoreColor =
-            item.score === null
-              ? 'text-gray-500'
-              : passed
-                ? 'text-green-600'
-                : retryRecommended
-                  ? 'text-orange-500'
-                  : 'text-gray-900';
-          // primary CTA 는 passed 면 "다음으로", 아니면 "다시 발음하기".
-          const primaryAdvance = passed;
-          // 점수 게이지: 합격선(passThreshold) 을 화면에서도 명시해 학습자가 "얼마나 더" 가 필요한지 직관할 수 있게 한다.
-          // 백엔드가 응답에 같이 실어 보내는 합격선을 그대로 쓴다 — 어드민이 settings 에서 합격선을
-          // 바꿔도 게이지 마커가 즉시 따라온다. 응답 누락 시엔 기본 80 으로 폴백.
-          const passThreshold = item.passThreshold ?? 80;
-          const scoreGaugeColor = passed ? 'bg-green-500' : retryRecommended ? 'bg-orange-400' : 'bg-gray-400';
           return (
-            <BotBubble key={item.key}>
-              {/* 헤드라인 + 점수 + 게이지를 한 묶음으로 잡아 시각 위계의 정점에 둔다.
-                  - 헤드라인: 가장 큰 굵은 텍스트
-                  - 점수: 그보다 약간 작지만 컬러 강조
-                  - 게이지: 80 합격선을 점선으로 표시해 "얼마나 더" 가 직관됨 */}
-              <div className="flex items-start gap-2 mb-2">
-                {HeadlineIcon && (
-                  <HeadlineIcon size={22} className={`${headlineIconClass} flex-shrink-0 mt-0.5`} />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className={`text-lg font-bold leading-tight ${headlineColor}`}>
-                    {headline}
-                  </p>
-                  {item.score !== null && (
-                    <>
-                      <p className={`text-3xl font-extrabold leading-tight mt-1 ${scoreColor}`}>
-                        {item.score.toFixed(1)}<span className="text-sm font-medium text-gray-500 ml-1">점</span>
-                      </p>
-                      <div className="relative mt-1.5 h-1.5 w-full max-w-[180px] rounded-full bg-gray-200 overflow-hidden">
-                        <div
-                          className={`absolute inset-y-0 left-0 ${scoreGaugeColor} transition-all`}
-                          style={{ width: `${Math.max(0, Math.min(100, item.score))}%` }}
-                        />
-                        <div
-                          className="absolute inset-y-0 w-px bg-gray-400"
-                          style={{ left: `${passThreshold}%` }}
-                          aria-label={`합격선 ${passThreshold}점`}
-                        />
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-0.5 max-w-[180px]">
-                        합격선 {passThreshold}점
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-              <p className="text-sm text-gray-700 leading-relaxed mb-3">
-                {item.guidanceKr || ' '}
-              </p>
-              {item.speechRate === 'FAST' && (
-                <div className="mb-3 inline-flex items-center gap-1 rounded-full bg-yellow-100 border border-yellow-200 px-2.5 py-1 text-xs font-medium text-yellow-800">
-                  <span>⏱</span>
-                  <span>조금 천천히 발음해 보세요</span>
-                </div>
-              )}
-              {item.weaknesses.length > 0 && (
-                <ul className="mb-3 text-xs text-gray-600 list-disc pl-5 space-y-0.5">
-                  {item.weaknesses.map((w, i) => (
-                    <li key={`weak-${item.key}-${i}`}>{w}</li>
-                  ))}
-                </ul>
-              )}
-              {/* 약점 음소를 한국식 음차 chip 으로만 인라인 노출. 박스를 두면 음소 보기 안의 칩과
-                  정보가 중복되고 시각 부담이 커지므로, 여기는 "어떤 음소가 약점인지" 알림 역할만 한다.
-                  자세한 발음 설명은 음소 보기 → 음소 칩 클릭 → 조음 카드에서 본다.
-
-                  LLM 이 고른 phonemeTips 가 실제 alignment errors 와 어긋날 때(예: 실제로는 안 틀린
-                  음소를 약점으로 표기) 가 있어, 음소 보기의 빨강 음소와 일치하도록 substitution/deletion
-                  의 canonical 음소 집합과 교집합 한 것만 노출한다. 둘 다 비면 줄 자체를 숨긴다. */}
-              {(() => {
-                const wrongPhonemes = new Set(
-                  item.alignment.errors
-                    .filter((e) => (e.op === 'substitution' || e.op === 'deletion') && e.canonical)
-                    .map((e) => normalizePhoneme(e.canonical as string))
-                );
-                const validTips = item.phonemeTips.filter((t) =>
-                  wrongPhonemes.has(normalizePhoneme(t.phoneme))
-                );
-                if (validTips.length === 0) return null;
-                return (
-                  <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-                    <span>약점 음소</span>
-                    {validTips.map((tip, i) => (
-                      <span
-                        key={`tip-${item.key}-${i}`}
-                        className="inline-flex items-baseline gap-0.5 rounded-md bg-red-50 border border-red-200 px-1.5 py-0.5 font-mono text-red-700"
-                      >
-                        <span className="font-bold">{tip.phoneme}</span>
-                        {tip.koreanCue && <span className="text-[10px] text-red-500">({tip.koreanCue})</span>}
-                      </span>
-                    ))}
-                  </div>
-                );
-              })()}
-              <div className="mb-3">
-                <FeedbackPhonemeSection
-                  targetText={item.alignment.targetText}
-                  canonical={item.alignment.canonical}
-                  perceived={item.alignment.perceived}
-                  errors={item.alignment.errors}
-                  canonicalWords={item.alignment.canonicalWords}
-                />
-              </div>
-              {isActive && (
-                // primary 가 2/3 폭, secondary 가 1/3 폭. secondary 는 텍스트만으로 처리해
-                // 학습자가 시스템 권유 (다시 / 다음) 를 한눈에 알아채게 한다.
-                <div className="flex gap-2 items-stretch">
-                  <button
-                    onClick={handleRetry}
-                    disabled={busyStep}
-                    className={`flex items-center justify-center gap-1.5 h-11 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 ${
-                      primaryAdvance
-                        ? 'flex-[1] bg-transparent text-gray-500 hover:text-orange-500 hover:bg-orange-50'
-                        : 'flex-[2] bg-orange-500 hover:bg-orange-600 text-white border-2 border-orange-500 shadow-sm'
-                    }`}
-                  >
-                    <RotateCcw size={16} className={primaryAdvance ? 'text-gray-400' : 'text-white'} />
-                    <span>다시 발음하기</span>
-                  </button>
-                  <button
-                    onClick={handleAdvance}
-                    disabled={busyStep}
-                    className={`h-11 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 ${
-                      primaryAdvance
-                        ? 'flex-[2] bg-brand-500 hover:bg-brand-600 text-white shadow-sm'
-                        : 'flex-[1] bg-transparent text-gray-500 hover:text-brand-500 hover:bg-brand-50'
-                    }`}
-                  >
-                    {isLast ? finalAdvanceLabel : advanceLabel}
-                  </button>
-                </div>
-              )}
-            </BotBubble>
+            <FeedbackBubble
+              key={item.key}
+              data={item.data}
+              itemKey={item.key}
+              isActive={isActive}
+              isLast={promptIndex >= prompts.length - 1}
+              busy={busyStep}
+              advanceLabel={advanceLabel}
+              finalAdvanceLabel={finalAdvanceLabel}
+              onRetry={handleRetry}
+              onAdvance={handleAdvance}
+            />
           );
         }
 
@@ -407,39 +242,16 @@ export default function LearningChatFlow({
         const isPromptActive =
           idx === chat.length - 1 && showRecordButton && p.id === currentPrompt?.id;
         return (
-          <BotBubble key={item.key}>
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <p className="text-base text-gray-900 leading-relaxed flex-1">
-                {p.instruction}
-                {p.target && (
-                  <span className="block mt-2 text-lg font-bold">{p.target}</span>
-                )}
-              </p>
-              {p.ttsText && (
-                <button
-                  onClick={() => tts.play(p.ttsText)}
-                  className="p-2 bg-brand-500 hover:bg-brand-600 rounded-full transition-colors flex-shrink-0"
-                  aria-label="예시 음성 듣기"
-                >
-                  <Volume2 size={18} className="text-white" />
-                </button>
-              )}
-            </div>
-            {isPromptActive && (
-              <>
-                <p className="mb-2 text-xs text-gray-500 leading-snug">
-                  💡 카운트다운이 끝나면 또렷하고 <span className="font-semibold text-gray-700">크게</span> 발음해 주세요. 조용한 곳일수록 인식이 정확해요.
-                </p>
-                <RecordButton
-                  isRecording={recorder.isRecording}
-                  busy={busyStep}
-                  onStart={handleStartRecording}
-                  onStop={handleStopRecording}
-                  busyLabel="업로드 중..."
-                />
-              </>
-            )}
-          </BotBubble>
+          <PromptBubble
+            key={item.key}
+            prompt={p}
+            isActive={isPromptActive}
+            isRecording={recorder.isRecording}
+            busy={busyStep}
+            onPlayTts={tts.play}
+            onStartRecording={handleStartRecording}
+            onStopRecording={handleStopRecording}
+          />
         );
       })}
       <div ref={chatBottomRef} />

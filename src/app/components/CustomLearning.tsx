@@ -11,12 +11,14 @@ import { sessionsApi, type Session } from '../api';
 import { useApiResource } from '../hooks/useApiResource';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
+import { useConfirm } from './ConfirmProvider';
 
 // 새 세션의 기본 제목. 사용자는 진입 후 SessionDetail 의 제목 편집 버튼으로 즉시 바꿀 수 있다.
 const DEFAULT_NEW_SESSION_TITLE = '새 학습 세션';
 
 export default function CustomLearning() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const { data, loading, setData } = useApiResource(
     () => sessionsApi.list(),
     [],
@@ -46,7 +48,13 @@ export default function CustomLearning() {
   const handleDelete = async (event: React.MouseEvent, target: Session) => {
     event.stopPropagation();
     if (deletingId !== null) return;
-    if (!confirm(`"${target.title}" 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
+    const ok = await confirm({
+      title: '세션 삭제',
+      description: `"${target.title}" 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+      confirmLabel: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
     setDeletingId(target.id);
     try {
       await sessionsApi.delete(target.id);

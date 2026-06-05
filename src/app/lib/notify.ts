@@ -20,7 +20,7 @@ const KOREAN_ERROR_MESSAGES: Record<string, string> = {
 //      도움 되는 한 줄). 예: "sessionSentenceId is required", "RECORD 단계는 targetText 가 필요합니다".
 //   2) 그게 없으면 한국어 매핑 사전을 사용.
 //   3) 사전에도 없으면 백엔드 message (있을 때) → fallback 순.
-// 이전 구조는 매핑을 무조건 우선해 백엔드의 구체 메시지를 가렸다 — 학습자가 "어떻게 고쳐야 할지 모름".
+// 구체 메시지를 우선하는 이유: 매핑을 무조건 앞세우면 백엔드가 보낸 교정 안내가 가려진다.
 export function notifyApiError(err: unknown, fallback: string): void {
   if (err instanceof ApiException) {
     const localized = KOREAN_ERROR_MESSAGES[err.code];
@@ -37,4 +37,19 @@ export function notifyApiError(err: unknown, fallback: string): void {
     return;
   }
   toast.error(fallback);
+}
+
+// 단순 정보/안내 토스트. 아직 준비되지 않은 기능 안내 등 비-에러 메시지에 사용한다.
+export function notifyInfo(message: string): void {
+  toast.info(message);
+}
+
+// 성공 토스트. 저장·삭제 등 사용자 행동이 정상 완료됐을 때 사용한다.
+export function notifySuccess(message: string): void {
+  toast.success(message);
+}
+
+// 에러 토스트(ApiException 이 아닌 일반 메시지용). API 에러는 notifyApiError 를 쓴다.
+export function notifyError(message: string): void {
+  toast.error(message);
 }

@@ -4,9 +4,10 @@
 // 완료한 챕터에는 체크 표시만 얹는다(잠금 아님).
 
 import { Check, Star } from 'lucide-react';
-import type { ChapterSummary, Difficulty } from '../../api/types';
+import type { ChapterSummary } from '../../api/types';
 import { completedChapters } from '../../lib/trackProgress';
 import { chapterVisual } from '../../lib/chapterIcon';
+import { DIFFICULTY_LABEL, DIFFICULTY_DOTS } from '../../lib/difficulty';
 
 type GridTrackMapProps = {
   trackId: number;
@@ -14,12 +15,6 @@ type GridTrackMapProps = {
   onEnter: (chapterIndex: number) => void;
 };
 
-const DIFFICULTY_LABEL: Record<Difficulty, string> = {
-  EASY: '쉬움',
-  MEDIUM: '보통',
-  HARD: '어려움',
-};
-const DIFFICULTY_DOTS: Record<Difficulty, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
 
 export default function GridTrackMap({ trackId, chapters, onEnter }: GridTrackMapProps) {
   const done = completedChapters(trackId);

@@ -12,6 +12,7 @@ import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 import { celebrateChapter } from '../lib/reward';
+import { accuracyColorClass } from '../lib/score';
 import booExp from '@/assets/boo-pic/BOO12-2.png';
 
 interface FeedbackFlowProps {
@@ -47,10 +48,7 @@ export default function FeedbackFlow({
   const hasItems = items.length > 0;
   const weakPhonemeLabel = feedback.weakPhoneme?.toUpperCase();
   // 점수 구간별 강조 색. 낮은 점수에 무조건 sky 색을 주면 "잘했다" 라는 신호로 오해된다.
-  const accuracyColor =
-    feedback.accuracy >= 80 ? 'text-brand-600'
-    : feedback.accuracy >= 60 ? 'text-amber-500'
-    : 'text-red-500';
+  const accuracyColor = accuracyColorClass(feedback.accuracy);
 
   // EXP 보상 적용은 반드시 백엔드 단일 진입점(POST /api/feedback/{id}/complete) 을 거친다.
   // 응답에 갱신된 사용자 정보가 들어있고, 호출 전 exp 와 비교해 실제 가산량을 산출한다.
