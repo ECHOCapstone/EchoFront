@@ -29,6 +29,7 @@ import {
 } from '../api';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
+import { useConfirm } from './ConfirmProvider';
 
 // 문장 한 개를 LearningChatFlow 가 받는 prompt 로 변환한다. 매 prompt 가 RECORD 라
 // canRecord/ttsText 모두 항상 채워진다.
@@ -44,6 +45,7 @@ function toLearningPrompt(sentence: SessionSentence): LearningPrompt {
 
 export default function SessionDetail() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const sessionId = useMemo(() => {
     const raw = searchParams.get('sessionId');
@@ -151,7 +153,13 @@ export default function SessionDetail() {
 
   const handleDeleteSession = async () => {
     if (!session) return;
-    if (!confirm(`"${session.title}" 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
+    const ok = await confirm({
+      title: '세션 삭제',
+      description: `"${session.title}" 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+      confirmLabel: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await sessionsApi.delete(session.id);
       navigate(paths.customLearning, { replace: true });
@@ -160,10 +168,9 @@ export default function SessionDetail() {
     }
   };
 
-  const handleEndLearning = () => {
-    if (confirm('학습을 끝내시겠습니까?')) {
-      navigate(paths.customLearning);
-    }
+  const handleEndLearning = async () => {
+    const ok = await confirm({ title: '학습 종료', description: '학습을 끝내시겠습니까?', confirmLabel: '끝내기' });
+    if (ok) navigate(paths.customLearning);
   };
 
   if (!session) {

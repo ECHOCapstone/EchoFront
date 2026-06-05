@@ -7,6 +7,7 @@ import { ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
 import { adminApi, type SeedFileStatus, type TrackInput, type TrackSummary } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
+import { useConfirm } from '../ConfirmProvider';
 import SeedPersistActions from './SeedPersistActions';
 
 const EMPTY_FORM: TrackInput = { title: '', description: '', displayOrder: 0 };
@@ -21,6 +22,7 @@ export default function TrackManager({
     [],
     { errorFallback: '트랙을 불러오지 못했습니다.', initialData: [] }
   );
+  const confirm = useConfirm();
   const tracks = data ?? [];
 
   // null = 폼 닫힘, 'new' = 생성, number = 해당 트랙 수정.
@@ -79,7 +81,13 @@ export default function TrackManager({
   };
 
   const handleDelete = async (track: TrackSummary) => {
-    if (!confirm(`"${track.title}" 트랙을 삭제하시겠습니까?`)) return;
+    const ok = await confirm({
+      title: '트랙 삭제',
+      description: `"${track.title}" 트랙을 삭제하시겠습니까?`,
+      confirmLabel: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await adminApi.deleteTrack(track.id);
       setData((prev) => (prev ?? []).filter((t) => t.id !== track.id));

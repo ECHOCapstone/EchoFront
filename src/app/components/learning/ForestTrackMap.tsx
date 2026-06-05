@@ -7,8 +7,9 @@
 // preserveAspectRatio="none" 로 늘리되 V 를 가로 스케일과 맞춰 왜곡을 최소화한다.
 
 import { Check, Flag, Lock, Play, Star } from 'lucide-react';
-import type { ChapterSummary, Difficulty } from '../../api/types';
+import type { ChapterSummary } from '../../api/types';
 import { completedChapters, isChapterUnlocked } from '../../lib/trackProgress';
+import { DIFFICULTY_LABEL, DIFFICULTY_DOTS } from '../../lib/difficulty';
 import booWalker from '@/assets/boo-pic/BOO17-1.png';
 
 type ForestTrackMapProps = {
@@ -23,13 +24,6 @@ const STEP_PX = 92; // 챕터 한 칸의 실제 픽셀 높이 (STEP_PX / V = 4 �
 // 첫 노드 boo 가 상단 경계에 닿아 잘리지 않게 약간의 헤드룸을 둔다.
 const PAD_V = 10;
 const PAD_PX = PAD_V * (STEP_PX / V); // = 40
-
-const DIFFICULTY_LABEL: Record<Difficulty, string> = {
-  EASY: '쉬움',
-  MEDIUM: '보통',
-  HARD: '어려움',
-};
-const DIFFICULTY_DOTS: Record<Difficulty, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
 
 // 개별 장식 수동 미세 이동(viewBox 단위, dx: +오른쪽 / dy: +아래). 인덱스 = 노드 순서.
 const SCENERY_ADJUST: Record<number, { dx?: number; dy?: number }> = {

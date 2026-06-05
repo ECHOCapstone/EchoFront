@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Save, RotateCcw } from 'lucide-react';
 import type { SeedFileStatus } from '../../api';
 import { notifyApiError } from '../../lib/notify';
+import { useConfirm } from '../ConfirmProvider';
 
 interface SeedPersistActionsProps {
   status: SeedFileStatus | null;
@@ -29,6 +30,7 @@ export default function SeedPersistActions({
   resetLabel = '시드 재적용',
   onStatusChange,
 }: SeedPersistActionsProps) {
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
 
   const handlePersist = async () => {
@@ -46,7 +48,13 @@ export default function SeedPersistActions({
 
   const handleReset = async () => {
     if (busy) return;
-    if (!confirm(resetConfirmMessage)) return;
+    const ok = await confirm({
+      title: '시드 재적용',
+      description: resetConfirmMessage,
+      confirmLabel: '재적용',
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const next = await reset();

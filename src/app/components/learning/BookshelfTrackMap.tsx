@@ -4,8 +4,9 @@
 // 순차 잠금 없이 원하는 책(챕터)부터 펼칠 수 있고, 완료한 책엔 책갈피 체크를 단다.
 
 import { Check, Star } from 'lucide-react';
-import type { ChapterSummary, Difficulty } from '../../api/types';
+import type { ChapterSummary } from '../../api/types';
 import { completedChapters } from '../../lib/trackProgress';
+import { DIFFICULTY_LABEL, DIFFICULTY_DOTS } from '../../lib/difficulty';
 
 type BookshelfTrackMapProps = {
   trackId: number;
@@ -37,8 +38,6 @@ function labelDx(indexInRow: number, rowLength: number): number {
   return 0;
 }
 
-const DIFFICULTY_LABEL: Record<Difficulty, string> = { EASY: '쉬움', MEDIUM: '보통', HARD: '어려움' };
-const DIFFICULTY_DOTS: Record<Difficulty, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];

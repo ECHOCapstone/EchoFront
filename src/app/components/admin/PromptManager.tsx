@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { adminApi, type Prompt, type SeedFileStatus } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
+import { useConfirm } from '../ConfirmProvider';
 import SeedPersistActions from './SeedPersistActions';
 
 export default function PromptManager() {
@@ -88,6 +89,7 @@ function PromptEditor({
   onBack: () => void;
   onSaved: (prompt: Prompt) => void;
 }) {
+  const confirm = useConfirm();
   const [content, setContent] = useState(prompt.content);
   const [busy, setBusy] = useState(false);
   const dirty = content !== prompt.content;
@@ -107,7 +109,13 @@ function PromptEditor({
 
   const handleReset = async () => {
     if (busy) return;
-    if (!confirm('기본값으로 되돌리시겠습니까? 재정의한 내용이 사라집니다.')) return;
+    const ok = await confirm({
+      title: '기본값으로 되돌리기',
+      description: '기본값으로 되돌리시겠습니까? 재정의한 내용이 사라집니다.',
+      confirmLabel: '되돌리기',
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const reset = await adminApi.resetPrompt(prompt.key);

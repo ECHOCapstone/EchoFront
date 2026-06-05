@@ -6,6 +6,7 @@ import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react';
 import { adminApi, type ScriptDetail, type ScriptSummary, type TrackSummary } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
+import { useConfirm } from '../ConfirmProvider';
 import ScriptForm from './ScriptForm';
 
 export default function ScriptManager({
@@ -20,6 +21,7 @@ export default function ScriptManager({
     [track.id],
     { errorFallback: '스크립트를 불러오지 못했습니다.', initialData: [] }
   );
+  const confirm = useConfirm();
   const scripts = data ?? [];
 
   // null = 폼 닫힘, 'new' = 생성, ScriptDetail = 수정(상세 로드됨).
@@ -55,7 +57,13 @@ export default function ScriptManager({
   };
 
   const handleDelete = async (script: ScriptSummary) => {
-    if (!confirm(`"${script.title}" 스크립트를 삭제하시겠습니까?`)) return;
+    const ok = await confirm({
+      title: '스크립트 삭제',
+      description: `"${script.title}" 스크립트를 삭제하시겠습니까?`,
+      confirmLabel: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await adminApi.deleteScript(script.id);
       setData((prev) => (prev ?? []).filter((s) => s.id !== script.id));

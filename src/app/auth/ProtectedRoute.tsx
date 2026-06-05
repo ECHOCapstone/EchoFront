@@ -2,6 +2,7 @@
 
 import { Navigate, useLocation } from 'react-router';
 import { useAuth } from './useAuth';
+import { paths } from '../lib/paths';
 import type { ReactNode } from 'react';
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -12,7 +13,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     return null;
   }
   if (state.status === 'unauthenticated') {
-    return <Navigate to="/" replace state={{ from: location.pathname }} />;
+    return <Navigate to={paths.login} replace state={{ from: location.pathname }} />;
   }
   return <>{children}</>;
 }

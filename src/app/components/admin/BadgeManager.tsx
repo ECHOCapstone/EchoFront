@@ -2,12 +2,13 @@
 // 사용자 통계 페이지의 큰 배지 (예: "첫 피드백", "7일 연속 학습") 를 어드민이 add / edit / delete 한다.
 // condition 종류는 백엔드 BadgeCondition enum 이 정한다 — availableConditions 응답을 그대로 select 에 노출.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { adminApi, type Badge, type BadgeCatalog, type BadgeInput, type SeedFileStatus } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
+import { useConfirm } from '../ConfirmProvider';
 import SeedPersistActions from './SeedPersistActions';
 
 // 빈 폼의 초깃값. condition 의 기본 선택은 catalog 응답을 받은 뒤 첫 항목으로 자동 채워진다.
@@ -30,24 +31,13 @@ export default function BadgeManager() {
     }
   );
   const catalog = data ?? { badges: [], availableConditions: [] };
+  const confirm = useConfirm();
 
   const [editing, setEditing] = useState<'new' | string | null>(null);
   const [form, setForm] = useState<BadgeInput>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  // 영구 저장본 상태는 SeedPersistActions 가 시드 재적용/저장 행동 후 onStatusChange 로 갱신한다.
   const [seedStatus, setSeedStatus] = useState<SeedFileStatus | null>(null);
-
-  useEffect(() => {
-    // 부팅 직후 한 번. 영구 저장본 상태는 SeedPersistActions 가 행동 후 갱신.
-    adminApi
-      .listBadges()
-      .then(() => {
-        // catalog 가 SeedFileStatus 자체를 노출하지 않으므로 별도 endpoint 가 없을 땐 null 로 둔다.
-        // SystemStatus 의 seedFiles 에서도 확인 가능하지만 매니저 화면 우상단 표시 용으로는 SeedPersistActions
-        // 의 응답으로 충분하다.
-        setSeedStatus(null);
-      })
-      .catch(() => setSeedStatus(null));
-  }, []);
 
   const openCreate = () => {
     const defaultCondition = catalog.availableConditions[0] ?? '';
@@ -106,7 +96,13 @@ export default function BadgeManager() {
   };
 
   const handleDelete = async (badge: Badge) => {
-    if (!confirm(`"${badge.name}" 배지를 삭제하시겠습니까?`)) return;
+    const ok = await confirm({
+      title: '배지 삭제',
+      description: `"${badge.name}" 배지를 삭제하시겠습니까?`,
+      confirmLabel: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await adminApi.deleteBadge(badge.id);
       setData((prev) => ({

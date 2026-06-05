@@ -7,6 +7,7 @@ import { Trash2, Upload } from 'lucide-react';
 import { adminApi, type PhonemeAsset } from '../../api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { notifyApiError } from '../../lib/notify';
+import { useConfirm } from '../ConfirmProvider';
 
 export default function PhonemeManager() {
   const { data, loading, error, setData } = useApiResource(
@@ -14,6 +15,7 @@ export default function PhonemeManager() {
     [],
     { errorFallback: '음소 이미지를 불러오지 못했습니다.', initialData: [] }
   );
+  const confirm = useConfirm();
   const assets = data ?? [];
 
   const [phoneme, setPhoneme] = useState('');
@@ -46,7 +48,13 @@ export default function PhonemeManager() {
   };
 
   const handleDelete = async (asset: PhonemeAsset) => {
-    if (!confirm(`${asset.phoneme} 음소 이미지를 삭제하시겠습니까?`)) return;
+    const ok = await confirm({
+      title: '이미지 삭제',
+      description: `${asset.phoneme} 음소 이미지를 삭제하시겠습니까?`,
+      confirmLabel: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await adminApi.deletePhonemeImage(asset.phoneme);
       setData((prev) => (prev ?? []).filter((a) => a.phoneme !== asset.phoneme));
