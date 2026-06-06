@@ -13,6 +13,10 @@ const KOREAN_ERROR_MESSAGES: Record<string, string> = {
   PROMPT_NOT_FOUND: '존재하지 않는 프롬프트입니다.',
   USER_NOT_FOUND: '사용자를 찾을 수 없습니다.',
   LOGIN_FAILED: '아이디 또는 비밀번호가 일치하지 않습니다.',
+  PASSWORD_TOO_WEAK: '비밀번호가 정책을 충족하지 않습니다. 정책 안내를 확인해 주세요.',
+  TERMS_NOT_AGREED: '이용약관에 동의해 주세요.',
+  PRIVACY_NOT_AGREED: '개인정보처리방침에 동의해 주세요.',
+  AGE_RESTRICTION_NOT_AGREED: '만 14세 이상 확인이 필요합니다.',
 };
 
 // 에러 사용자 알림의 단일 진입점. ApiException 이면:

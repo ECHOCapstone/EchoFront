@@ -2,10 +2,38 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import type { IncomingMessage } from 'node:http'
 
 // dev 서버가 /api·/actuator 를 넘겨줄 백엔드 주소. 호스트가 localhost 가 아닌 환경(WSL, 원격 백엔드)을
 // 위해 환경변수로 덮어쓸 수 있게 한다. prod 빌드는 이 프록시를 쓰지 않고 VITE_API_BASE_URL 을 쓴다.
 const DEV_PROXY_TARGET = process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8080'
+
+// X-Forwarded-* 헤더는 콤마로 구분된 multi-value 를 가질 수 있다 (proxy 가 여러 단 거치며 누적).
+// Spring 의 ForwardedHeaderFilter 는 첫 토큰만 사용하므로 그 첫 토큰을 추출해 정리한다.
+function firstToken(value: string | string[] | undefined): string | null {
+  if (!value) return null
+  const raw = Array.isArray(value) ? value[0] : value
+  const first = raw.split(',')[0]?.trim()
+  return first ? first : null
+}
+
+// Cloudflare Tunnel → vite → backend 단계에서 외부 도메인/프로토콜이 정확히 전달되도록 X-Forwarded-*
+// 를 직접 설정한다. http-proxy 의 xfwd 자동 추가는 vite 의 incoming connection 정보를 따르기 때문에
+// Cloudflare 가 보낸 https/443 대신 http/5173 또는 80 같은 잘못된 값을 박을 수 있다 — 그 결과 OAuth
+// {baseUrl} 치환이 redirect_uri 에 ":80" 을 붙여 Google 의 redirect_uri_mismatch 를 유발한다.
+function applyForwardedHeaders(proxy: { on: (event: string, listener: (...args: unknown[]) => void) => void }) {
+  proxy.on('proxyReq', (...args: unknown[]) => {
+    const proxyReq = args[0] as { setHeader: (k: string, v: string) => void }
+    const req = args[1] as IncomingMessage
+    const proto = firstToken(req.headers['x-forwarded-proto']) ?? 'http'
+    const host = firstToken(req.headers['x-forwarded-host']) ?? req.headers.host ?? ''
+    // 표준 포트 (https=443, http=80) 는 명시하지 않는 게 표준이며, Spring 도 그쪽이 안전하다.
+    // X-Forwarded-Port 를 아예 제거해 ForwardedHeaderFilter 가 proto 의 default port 로 합성하게 한다.
+    proxyReq.setHeader('X-Forwarded-Proto', proto)
+    if (host) proxyReq.setHeader('X-Forwarded-Host', String(host))
+    proxyReq.setHeader('X-Forwarded-Port', proto === 'https' ? '443' : '80')
+  })
+}
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -23,16 +51,19 @@ export default defineConfig({
     // Cloudflare Tunnel(*.trycloudflare.com 등) 으로 외부 노출할 때 Vite 가 Host 헤더를 검증해
     // 차단하지 않도록 모든 호스트를 허용한다. 시연/데모용 — 정식 운영에선 도메인을 명시할 것.
     allowedHosts: true,
-    // 브라우저(Windows) 와 백엔드(Linux/WSL) 의 호스트가 달라도 같은 origin 으로 호출되도록
-    // /api 와 /actuator 를 vite dev 서버가 mock 백엔드로 프록시한다.
+    // - changeOrigin: 백엔드가 Host 헤더 검증을 통과하도록 target host (localhost:8080) 로 치환.
+    // - configure: X-Forwarded-* 를 incoming 헤더 기준으로 직접 정리. xfwd 자동 추가는 잘못된 포트를
+    //   박을 수 있어 사용하지 않는다.
     proxy: {
       '/api': {
         target: DEV_PROXY_TARGET,
-        changeOrigin: false,
+        changeOrigin: true,
+        configure: applyForwardedHeaders,
       },
       '/actuator': {
         target: DEV_PROXY_TARGET,
-        changeOrigin: false,
+        changeOrigin: true,
+        configure: applyForwardedHeaders,
       },
     },
   },

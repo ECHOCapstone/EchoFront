@@ -4,6 +4,8 @@ import type {
   BadgeCatalog,
   BadgeInput,
   Difficulty,
+  LegalTermsCatalog,
+  LegalTermsEntry,
   LlmConfig,
   ModelServerConfig,
   PhonemeAsset,
@@ -132,4 +134,18 @@ export const adminApi = {
     apiClient.delete<void>(`/api/admin/badges/${encodeURIComponent(id)}`),
   persistBadges: () => apiClient.post<SeedFileStatus>('/api/admin/badges/persist'),
   resetBadgesToDefaults: () => apiClient.post<SeedFileStatus>('/api/admin/badges/reset'),
+
+  // ----- 약관 (이용약관 / 개인정보처리방침) -----
+  listLegalTerms: () => apiClient.get<LegalTermsCatalog>('/api/admin/legal/terms'),
+  updateLegalTerm: (kind: string, body: string) =>
+    apiClient.put<LegalTermsEntry>(
+      `/api/admin/legal/terms/${encodeURIComponent(kind)}`,
+      { json: { body } }
+    ),
+  resetLegalTerm: (kind: string) =>
+    apiClient.post<LegalTermsEntry>(
+      `/api/admin/legal/terms/${encodeURIComponent(kind)}/reset`,
+      {}
+    ),
+  resetLegalAll: () => apiClient.post<LegalTermsCatalog>('/api/admin/legal/reset', {}),
 };

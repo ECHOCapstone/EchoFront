@@ -9,12 +9,21 @@ import LlmSettingsSection from './LlmSettingsSection';
 import AsrModelSection from './AsrModelSection';
 import BadgeManager from './BadgeManager';
 import ContentSection from './ContentSection';
+import LegalManager from './LegalManager';
 import PromptManager from './PromptManager';
 import PhonemeManager from './PhonemeManager';
 import SettingsManager from './SettingsManager';
 import SystemStatusSection from './SystemStatusSection';
 
-type TabKey = 'content' | 'llm' | 'prompt' | 'phoneme' | 'settings' | 'badge' | 'system';
+type TabKey =
+  | 'content'
+  | 'llm'
+  | 'prompt'
+  | 'phoneme'
+  | 'settings'
+  | 'badge'
+  | 'legal'
+  | 'system';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'content', label: '콘텐츠' },
@@ -23,6 +32,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'phoneme', label: '음소' },
   { key: 'settings', label: '설정' },
   { key: 'badge', label: '배지' },
+  { key: 'legal', label: '약관' },
   { key: 'system', label: '상태' },
 ];
 
@@ -73,6 +83,7 @@ export default function AdminPage() {
           {tab === 'phoneme' && <PhonemeManager />}
           {tab === 'settings' && <SettingsManager />}
           {tab === 'badge' && <BadgeManager />}
+          {tab === 'legal' && <LegalManager />}
           {tab === 'system' && <SystemStatusSection />}
         </div>
       </div>

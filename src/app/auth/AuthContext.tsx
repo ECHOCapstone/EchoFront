@@ -26,7 +26,7 @@ export type AuthContextValue = {
   signup: (input: SignupInput) => Promise<User>;
   // OAuth2 콜백 핸들러가 부르는 진입점. 토큰만 받아 me() 로 사용자 정보를 마저 채운다.
   acceptOAuthToken: (accessToken: string) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -94,7 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const logout = useCallback(() => {
+  // 백엔드의 표준 로그아웃 엔드포인트를 한 번 부른 뒤 로컬 토큰을 폐기한다.
+  // stateless JWT 라 서버 응답이 실패하더라도 로컬 상태는 그대로 비워야 사용자가 로그아웃된 것으로 보인다.
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // 네트워크/서버 오류는 무시 — 로그아웃은 사용자 경험상 항상 성공이어야 한다.
+    }
     setAccessToken(null);
     setState({ status: 'unauthenticated' });
   }, []);
