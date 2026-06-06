@@ -4,6 +4,7 @@ import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { statsApi } from '../api';
 import { useApiResource } from '../hooks/useApiResource';
+import { getBadgeImage } from './badgeImages';
 
 export default function Stats() {
   const today = new Date();
@@ -172,29 +173,34 @@ export default function Stats() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">업적</h2>
           <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
             <div className="grid grid-cols-3 gap-4">
-              {badges.map((badge) => (
-                <div key={badge.id} className="flex flex-col items-center gap-2">
-                  <div
-                    className={`w-20 h-20 rounded-full flex items-center justify-center ${
-                      badge.achieved
-                        ? 'bg-gradient-to-br from-brand-100 to-brand-200'
-                        : 'bg-gray-100'
-                    }`}
-                  >
-                    {badge.achieved
-                      ? <Award size={32} className="text-brand-600" />
-                      : <Lock size={26} className="text-gray-400" />}
+              {badges.map((badge) => {
+                const badgeImage = badge.achieved ? getBadgeImage(badge.id) : undefined;
+                return (
+                  <div key={badge.id} className="flex flex-col items-center gap-2">
+                    <div
+                      className={`w-20 h-20 rounded-full flex items-center justify-center overflow-hidden ${
+                        badge.achieved
+                          ? 'bg-gradient-to-br from-brand-100 to-brand-200'
+                          : 'bg-gray-100'
+                      }`}
+                    >
+                      {badge.achieved
+                        ? (badgeImage
+                            ? <img src={badgeImage} alt={badge.name} className="w-full h-full object-contain" />
+                            : <Award size={32} className="text-brand-600" />)
+                        : <Lock size={26} className="text-gray-400" />}
+                    </div>
+                    {/* 미보유 배지의 이름도 회색으로 노출하여 다음 도전 목표가 분명하게 보이도록 한다. */}
+                    <p
+                      className={`text-xs font-medium text-center break-keep ${
+                        badge.achieved ? 'text-gray-900' : 'text-gray-400'
+                      }`}
+                    >
+                      {badge.name}
+                    </p>
                   </div>
-                  {/* 미보유 배지의 이름도 회색으로 노출하여 다음 도전 목표가 분명하게 보이도록 한다. */}
-                  <p
-                    className={`text-xs font-medium text-center break-keep ${
-                      badge.achieved ? 'text-gray-900' : 'text-gray-400'
-                    }`}
-                  >
-                    {badge.name}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
