@@ -33,27 +33,30 @@
 @media (pointer: fine) {
   /* Firefox / 표준 — 가는 스크롤바 + 차분한 색. */
   html {
+    /* overflow-y: scroll 로 스크롤바 자리(gutter) 를 항상 확보한다. macOS overlay 스크롤바가
+       시스템 설정에 따라 휠 굴리기 전까지 숨겨져도 트랙 영역이 시각적으로 존재해 "스크롤 가능 여부"
+       가 직관된다. 콘텐츠가 짧아 실제 스크롤이 불필요할 때도 가로 폭이 흔들리지 않는 이점도 있다. */
+    overflow-y: scroll;
     scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+    scrollbar-color: rgba(0, 0, 0, 0.25) rgba(0, 0, 0, 0.04);
   }
 
-  /* WebKit / Blink — 가로·세로 모두에 12px 폭. transparent track + 반투명 thumb 으로
-     본 UI 와 분리되지 않게 한다. border + background-clip 로 thumb 가장자리에 여백을 둬
-     "막대" 가 아니라 둥근 캡슐처럼 보이게 한다. */
+  /* WebKit / Blink — 가로·세로 모두에 12px 폭. 트랙에 옅은 회색을 줘 항상 가시성을 확보하고,
+     thumb 는 반투명 둥근 캡슐 모양으로 본 UI 와 부드럽게 분리되게 한다. */
   ::-webkit-scrollbar {
     width: 12px;
     height: 12px;
   }
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background-color: rgba(0, 0, 0, 0.04);
   }
   ::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.22);
+    background-color: rgba(0, 0, 0, 0.28);
     border-radius: 6px;
     border: 3px solid transparent;
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: rgba(0, 0, 0, 0.45);
   }
 }
