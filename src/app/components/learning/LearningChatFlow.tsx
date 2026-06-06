@@ -23,10 +23,13 @@ import MicPermissionModal from './MicPermissionModal';
 // 채팅 흐름에 노출되는 한 단계. id 는 부모 도메인 (LearningStep / SessionSentence) 의 식별자를 그대로 쓴다.
 export interface LearningPrompt {
   id: number;
-  instruction: string;     // 봇 말풍선 본문 (한국어 안내)
-  target: string | null;   // 발음할 영문 단어/문장. 없으면 굵게 노출되지 않는다.
-  canRecord: boolean;      // false 면 안내만 표시하고 녹음 버튼 자체를 띄우지 않는다.
-  ttsText: string | null;  // 우측 스피커 버튼으로 들려줄 텍스트. 없으면 버튼 자체가 사라진다.
+  instruction: string;         // 봇 말풍선 본문 (한국어 안내)
+  target: string | null;       // 발음할 영문 단어/문장. 없으면 굵게 노출되지 않는다.
+  canRecord: boolean;          // false 면 안내만 표시하고 녹음 버튼 자체를 띄우지 않는다.
+  ttsText: string | null;      // 우측 스피커 버튼으로 들려줄 텍스트. 없으면 버튼 자체가 사라진다.
+  // 영문 target 의 한국어 자막. 백엔드 학습 상세 응답에 함께 실려와 첫 렌더부터 즉시 노출된다.
+  // null 이면 PromptBubble 이 자막 줄 자체를 그리지 않는다.
+  koreanTranslation: string | null;
 }
 
 interface LearningChatFlowProps {
@@ -248,6 +251,7 @@ export default function LearningChatFlow({
             isActive={isPromptActive}
             isRecording={recorder.isRecording}
             busy={busyStep}
+            koreanTranslation={p.koreanTranslation ?? undefined}
             onPlayTts={tts.play}
             onStartRecording={handleStartRecording}
             onStopRecording={handleStopRecording}

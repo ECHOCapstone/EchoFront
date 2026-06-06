@@ -30,7 +30,7 @@ export default function Main() {
             >
               <div className="flex-1 min-w-0">
                 <div className="text-2xl font-bold mb-1">학습 트랙</div>
-                <div className="text-sm opacity-90 leading-relaxed">트랙을 골라 챕터별로 차근차근 익혀요</div>
+                <div className="text-sm opacity-90 leading-relaxed">트랙을 골라 챕터별로<br />차근차근 익혀요</div>
               </div>
             </button>
             <img

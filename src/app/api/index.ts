@@ -6,6 +6,7 @@ export { recordingsApi } from './recordings';
 export { feedbackApi } from './feedback';
 export { statsApi } from './stats';
 export { rankingApi } from './ranking';
+export { translationsApi } from './translations';
 export { ttsApi } from './tts';
 export { phonemesApi } from './phonemes';
 export {

@@ -19,9 +19,9 @@ export type LoginInput = { username: string; password: string };
 
 // OAuth2 신규 사용자가 가입 폼을 완료하며 백엔드로 보내는 입력.
 // pendingToken 은 OAuth2 SuccessHandler 가 fragment 로 실어 보낸 5분 만료 JWT — 위변조 방지로 그대로 전달.
+// 표준 소셜 온보딩 방식대로 닉네임만 받는다 — 내부 식별용 username 은 백엔드가 (provider, providerUid) 로 자동 생성한다.
 export type OAuthSignupCompleteInput = {
   pendingToken: string;
-  username: string;
   nickname: string;
   agreedTerms: boolean;
   agreedPrivacy: boolean;

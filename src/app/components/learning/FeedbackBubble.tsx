@@ -1,10 +1,17 @@
 // 한 번의 녹음에 대한 발음 피드백 말풍선. 헤드라인·점수 게이지·약점·음소 정렬 시각화와
 // (활성 상태일 때) 다시/다음 액션 버튼을 렌더한다. 표현 규칙은 feedbackPresentation 이 계산한다.
+// 점수가 처음 노출될 때 tier 에 따라 통과 효과음(good/great) 을 한 번 재생한다.
+//
+// 통과(passed=true) 시에는 세부 피드백 영역을 기본 접어 두고 "자세히 보기" 토글로 펼친다.
+// 매 시도마다 약점·음소 시각화가 강제 노출되면 피로감이 크다는 학습자 피드백을 반영한다.
+// 미통과는 개선 정보가 필요하므로 기본 펼친 상태로 둔다.
 
-import { RotateCcw } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { BotBubble } from '../ChatBubble';
 import FeedbackPhonemeSection from '../FeedbackPhonemeSection';
 import type { CanonicalWord, PhonemeError, PhonemeTip, SpeechRate, WrongWord } from '../../api';
+import { playScoreFanfare } from '../../lib/scoreFanfare';
 import { feedbackPresentation, selectWeakPhonemeTips } from './feedbackPresentation';
 
 // 음소 정렬 결과 스냅샷. 피드백 말풍선이 음소 단위 시각화를 그릴 때 쓴다.
@@ -68,26 +75,45 @@ export default function FeedbackBubble({
     passThreshold: data.passThreshold,
   });
   const Icon = view.icon;
+  const tokens = view.tokens;
   const validTips = selectWeakPhonemeTips(data.phonemeTips, data.alignment.errors);
+
+  // 통과 tier (good / great) 면 세부 영역을 접고, 미통과 tier 는 펼친 상태로 시작한다.
+  // tier 는 점수 임계 기반이라 백엔드 passed 신호와 무관하게 시각 일관성이 유지된다.
+  // 사용자가 명시적으로 토글하면 그 선택을 그대로 유지한다.
+  const [expanded, setExpanded] = useState(view.tier !== 'good' && view.tier !== 'great');
+
+  // 같은 시도 카드가 재렌더돼도 효과음이 반복되지 않도록 itemKey 가 바뀔 때만 한 번 재생한다.
+  // 점수가 비어있는 (조회 응답 등) 케이스는 통과 신호 없음 — fanfare 도 무음 tier.
+  useEffect(() => {
+    if (data.score === null) return;
+    playScoreFanfare(view.tier);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemKey]);
+
+  // 세부 영역에 노출할 콘텐츠가 한 줄이라도 있어야 토글 버튼을 의미 있게 보여준다.
+  const hasDetails =
+    !!data.guidanceKr ||
+    data.speechRate === 'FAST' ||
+    data.weaknesses.length > 0 ||
+    validTips.length > 0 ||
+    data.alignment.canonical.length > 0;
 
   return (
     <BotBubble>
-      {/* 헤드라인 + 점수 + 게이지를 한 묶음으로 잡아 시각 위계의 정점에 둔다.
-          - 헤드라인: 가장 큰 굵은 텍스트
-          - 점수: 그보다 약간 작지만 컬러 강조
-          - 게이지: 합격선을 점선으로 표시해 "얼마나 더" 가 직관됨 */}
+      {/* 헤드라인 + 점수 + 게이지를 한 묶음으로 잡아 시각 위계의 정점에 둔다. 항상 보임. */}
       <div className="flex items-start gap-2 mb-2">
-        {Icon && <Icon size={22} className={`${view.iconClass} flex-shrink-0 mt-0.5`} />}
+        {Icon && <Icon size={22} className={`${tokens.iconFg} flex-shrink-0 mt-0.5`} />}
         <div className="flex-1 min-w-0">
-          <p className={`text-lg font-bold leading-tight ${view.headlineColor}`}>{view.headline}</p>
+          <p className={`text-lg font-bold leading-tight ${tokens.text}`}>{view.headline}</p>
           {data.score !== null && (
             <>
-              <p className={`text-3xl font-extrabold leading-tight mt-1 ${view.scoreColor}`}>
+              <p className={`text-3xl font-extrabold leading-tight mt-1 ${tokens.textStrong}`}>
                 {data.score.toFixed(1)}<span className="text-sm font-medium text-gray-500 ml-1">점</span>
               </p>
               <div className="relative mt-1.5 h-1.5 w-full max-w-[180px] rounded-full bg-gray-200 overflow-hidden">
                 <div
-                  className={`absolute inset-y-0 left-0 ${view.gaugeColor} transition-all`}
+                  className={`absolute inset-y-0 left-0 ${tokens.bar} transition-all`}
                   style={{ width: `${Math.max(0, Math.min(100, data.score))}%` }}
                 />
                 <div
@@ -103,49 +129,74 @@ export default function FeedbackBubble({
           )}
         </div>
       </div>
-      <p className="text-sm text-gray-700 leading-relaxed mb-3">{data.guidanceKr || ' '}</p>
-      {data.speechRate === 'FAST' && (
-        <div className="mb-3 inline-flex items-center gap-1 rounded-full bg-yellow-100 border border-yellow-200 px-2.5 py-1 text-xs font-medium text-yellow-800">
-          <span>⏱</span>
-          <span>조금 천천히 발음해 보세요</span>
-        </div>
+
+      {/* 접힘 상태 — 펼치기 버튼만. 세부 노출 콘텐츠가 없으면 토글 자체를 숨겨 공허한 버튼이 안 보이게 한다. */}
+      {!expanded && hasDetails && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="mb-3 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          <ChevronDown size={14} />
+          <span>자세히 보기</span>
+        </button>
       )}
-      {data.weaknesses.length > 0 && (
-        <ul className="mb-3 text-xs text-gray-600 list-disc pl-5 space-y-0.5">
-          {data.weaknesses.map((w, i) => (
-            <li key={`weak-${itemKey}-${i}`}>{w}</li>
-          ))}
-        </ul>
-      )}
-      {/* 약점 음소를 한국식 음차 chip 으로만 인라인 노출. 박스를 두면 음소 보기 안의 칩과 정보가
-          중복되고 시각 부담이 커지므로, 여기는 "어떤 음소가 약점인지" 알림 역할만 한다.
-          자세한 발음 설명은 음소 보기 → 음소 칩 클릭 → 조음 카드에서 본다. */}
-      {validTips.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-          <span>약점 음소</span>
-          {validTips.map((tip, i) => (
-            <span
-              key={`tip-${itemKey}-${i}`}
-              className="inline-flex items-baseline gap-0.5 rounded-md bg-red-50 border border-red-200 px-1.5 py-0.5 font-mono text-red-700"
+
+      {/* 펼침 상태 — 가이드 / FAST 배지 / 약점 / 음소 시각화 + 접기 버튼. */}
+      {expanded && (
+        <>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3">{data.guidanceKr || ' '}</p>
+          {data.speechRate === 'FAST' && (
+            <div className="mb-3 inline-flex items-center gap-1 rounded-full bg-yellow-100 border border-yellow-200 px-2.5 py-1 text-xs font-medium text-yellow-800">
+              <span>⏱</span>
+              <span>조금 천천히 발음해 보세요</span>
+            </div>
+          )}
+          {data.weaknesses.length > 0 && (
+            <ul className="mb-3 text-xs text-gray-600 list-disc pl-5 space-y-0.5">
+              {data.weaknesses.map((w, i) => (
+                <li key={`weak-${itemKey}-${i}`}>{w}</li>
+              ))}
+            </ul>
+          )}
+          {/* 약점 음소 한국식 음차 chip 인라인. 자세한 설명은 음소 보기의 조음 카드에서 본다. */}
+          {validTips.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+              <span>약점 음소</span>
+              {validTips.map((tip, i) => (
+                <span
+                  key={`tip-${itemKey}-${i}`}
+                  className="inline-flex items-baseline gap-0.5 rounded-md bg-red-50 border border-red-200 px-1.5 py-0.5 font-mono text-red-700"
+                >
+                  <span className="font-bold">{tip.phoneme}</span>
+                  {tip.koreanCue && <span className="text-[10px] text-red-500">({tip.koreanCue})</span>}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="mb-3">
+            <FeedbackPhonemeSection
+              targetText={data.alignment.targetText}
+              canonical={data.alignment.canonical}
+              perceived={data.alignment.perceived}
+              errors={data.alignment.errors}
+              canonicalWords={data.alignment.canonicalWords}
+            />
+          </div>
+          {hasDetails && (
+            <button
+              onClick={() => setExpanded(false)}
+              className="mb-3 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
             >
-              <span className="font-bold">{tip.phoneme}</span>
-              {tip.koreanCue && <span className="text-[10px] text-red-500">({tip.koreanCue})</span>}
-            </span>
-          ))}
-        </div>
+              <ChevronUp size={14} />
+              <span>접기</span>
+            </button>
+          )}
+        </>
       )}
-      <div className="mb-3">
-        <FeedbackPhonemeSection
-          targetText={data.alignment.targetText}
-          canonical={data.alignment.canonical}
-          perceived={data.alignment.perceived}
-          errors={data.alignment.errors}
-          canonicalWords={data.alignment.canonicalWords}
-        />
-      </div>
+
+      {/* 액션 버튼 — 접힘 / 펼침과 무관하게 항상 노출해, 통과 후 빠른 진행 흐름을 막지 않는다. */}
       {isActive && (
-        // primary 가 2/3 폭, secondary 가 1/3 폭. secondary 는 텍스트만으로 처리해
-        // 학습자가 시스템 권유 (다시 / 다음) 를 한눈에 알아채게 한다.
+        // primary 가 2/3 폭, secondary 가 1/3 폭. 학습자가 시스템 권유 (다시 / 다음) 를 한눈에 알아채게 한다.
         <div className="flex gap-2 items-stretch">
           <button
             onClick={onRetry}

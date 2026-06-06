@@ -25,3 +25,35 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* 마우스 / 트랙패드 환경 (PC) 에서는 macOS overlay 스크롤바가 휠을 굴리기 전까지 보이지 않아
+   "스크롤 가능 여부" 가 시각적으로 가려진다. pointer: fine 미디어 쿼리로 PC 한정 항상 보이는
+   가는 스크롤바를 노출한다. 터치 (pointer: coarse) 환경엔 적용되지 않아 모바일 UX 는 그대로 유지된다.
+   scrollbar-hide 가 명시된 컨테이너는 위 규칙이 그대로 우선해 가로 정렬용 표는 영향이 없다. */
+@media (pointer: fine) {
+  /* Firefox / 표준 — 가는 스크롤바 + 차분한 색. */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+  }
+
+  /* WebKit / Blink — 가로·세로 모두에 12px 폭. transparent track + 반투명 thumb 으로
+     본 UI 와 분리되지 않게 한다. border + background-clip 로 thumb 가장자리에 여백을 둬
+     "막대" 가 아니라 둥근 캡슐처럼 보이게 한다. */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.22);
+    border-radius: 6px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+}

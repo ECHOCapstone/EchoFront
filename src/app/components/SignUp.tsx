@@ -3,8 +3,9 @@
 //   1) 표준 가입: 사용자가 직접 모든 필드를 입력한다.
 //   2) OAuth 가입 완료: 백엔드가 Google/Kakao 인증을 마치고 신규 사용자를
 //      `/signup#pendingToken=...&email=...&nicknameHint=...&provider=...` 로 redirect 한 상태.
-//      이 모드에서는 비밀번호 필드를 숨기고 이메일은 백엔드가 검증한 값으로 잠근다.
-//      사용자가 아이디 / 닉네임 / 동의 4종만 채우면 통합 회원으로 가입된다.
+//      이 모드에서는 아이디 / 비밀번호 필드를 숨기고 이메일은 백엔드가 검증한 값으로 잠근다.
+//      내부 username 은 백엔드가 (provider, providerUid) 로 자동 생성하므로 사용자는 닉네임만 정한다.
+//      사용자가 닉네임 + 동의 4종만 채우면 통합 회원으로 가입된다.
 //
 // pendingToken 은 fragment 로만 받고, mount 직후 history.replaceState 로 url 에서 즉시 지운다.
 
@@ -152,13 +153,15 @@ export default function SignUp() {
     }
   };
 
-  // 모드별로 검증 항목이 다르다. OAuth 모드는 password / email 중복확인이 빠진다.
+  // 모드별로 검증 항목이 다르다.
+  //   표준 가입       : id 중복확인 / password / passwordConfirm / email 중복확인 / 동의
+  //   OAuth 가입 완료 : nickname / 동의 (id 와 email 은 백엔드가 결정하므로 검증 대상이 아니다)
   const validate = (): FormErrors => {
     const next: FormErrors = {};
-    if (!formData.id) next.id = '아이디를 입력해주세요.';
-    else if (checkStatus.id === 'taken') next.id = '이미 사용 중인 아이디입니다.';
-    else if (checkStatus.id !== 'available') next.id = '아이디 중복확인이 완료되지 않았습니다.';
     if (!oauthCtx) {
+      if (!formData.id) next.id = '아이디를 입력해주세요.';
+      else if (checkStatus.id === 'taken') next.id = '이미 사용 중인 아이디입니다.';
+      else if (checkStatus.id !== 'available') next.id = '아이디 중복확인이 완료되지 않았습니다.';
       if (!formData.password) {
         next.password = '비밀번호를 입력해주세요.';
       } else if (formData.password.length < policy.minLength) {
@@ -192,7 +195,6 @@ export default function SignUp() {
       if (oauthCtx) {
         const tokenResponse = await authApi.completeOAuthSignup({
           pendingToken: oauthCtx.pendingToken,
-          username: formData.id,
           nickname: formData.nickname || oauthCtx.nicknameHint,
           agreedTerms: agreements.terms,
           agreedPrivacy: agreements.privacy,
@@ -287,32 +289,35 @@ export default function SignUp() {
         {oauthCtx && (
           <div className="mb-6 rounded-xl bg-brand-50 border border-brand-200 p-3 text-sm text-brand-700">
             {providerLabel} 로그인으로 확인된 이메일{' '}
-            <span className="font-semibold">{oauthCtx.email}</span> 로 가입합니다. 아이디와 닉네임, 약관 동의만 완료하면 끝!
+            <span className="font-semibold">{oauthCtx.email}</span> 로 가입합니다. 닉네임과 약관 동의만 완료하면 끝!
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="signup-id" className="text-gray-700">아이디</Label>
-            <Input
-              id="signup-id"
-              type="text"
-              placeholder="3~50자 사이의 아이디"
-              autoComplete="username"
-              value={formData.id}
-              onChange={(e) => updateField('id', e.target.value)}
-              aria-invalid={errors.id !== undefined}
-              aria-describedby="signup-id-message"
-              className="h-12 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
-            />
-            <FieldMessage
-              id="signup-id-message"
-              error={errors.id}
-              status={checkStatus.id === 'available' ? '사용 가능한 아이디입니다.' : null}
-              statusKind={checkStatus.id === 'taken' ? 'error' : 'ok'}
-              statusError={checkStatus.id === 'taken' ? '이미 사용 중인 아이디입니다.' : null}
-            />
-          </div>
+          {/* 아이디 — 표준 가입 전용. OAuth 모드는 백엔드가 내부 username 을 자동 생성하므로 입력 자체를 노출하지 않는다. */}
+          {!oauthCtx && (
+            <div className="space-y-2">
+              <Label htmlFor="signup-id" className="text-gray-700">아이디</Label>
+              <Input
+                id="signup-id"
+                type="text"
+                placeholder="3~50자 사이의 아이디"
+                autoComplete="username"
+                value={formData.id}
+                onChange={(e) => updateField('id', e.target.value)}
+                aria-invalid={errors.id !== undefined}
+                aria-describedby="signup-id-message"
+                className="h-12 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
+              />
+              <FieldMessage
+                id="signup-id-message"
+                error={errors.id}
+                status={checkStatus.id === 'available' ? '사용 가능한 아이디입니다.' : null}
+                statusKind={checkStatus.id === 'taken' ? 'error' : 'ok'}
+                statusError={checkStatus.id === 'taken' ? '이미 사용 중인 아이디입니다.' : null}
+              />
+            </div>
+          )}
 
           {/* 비밀번호 — OAuth 모드는 숨김. 백엔드는 password_hash 를 null 로 저장한다. */}
           {!oauthCtx && (
