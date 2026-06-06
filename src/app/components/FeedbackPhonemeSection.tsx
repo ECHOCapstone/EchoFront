@@ -24,6 +24,20 @@ function usePhonemeImageUrl(phoneme: string): string | null {
   return url;
 }
 
+// PC(마우스/트랙패드, pointer: fine)면 true. 음소 표가 가로 스크롤됨을 PC 사용자가
+// 인지하도록 이 환경에선 scrollbar-hide 를 떼고 스크롤바를 노출한다. 터치는 그대로 숨김.
+function usePointerFine(): boolean {
+  const [fine, setFine] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia('(pointer: fine)');
+    const onChange = () => setFine(mql.matches);
+    onChange();
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return fine;
+}
+
 interface FeedbackPhonemeSectionProps {
   targetText: string | null;
   canonical: string[];
@@ -55,6 +69,7 @@ export default function FeedbackPhonemeSection({
 }: FeedbackPhonemeSectionProps) {
   const [showPhonemes, setShowPhonemes] = useState(false);
   const [selectedPhoneme, setSelectedPhoneme] = useState<string | null>(null);
+  const pointerFine = usePointerFine();
 
   // canonicalIndex → 그 위치의 error (substitution / deletion). 정답 vs 내 발음 비교 표 빌딩의 단일 출처.
   const errorByIdx = useMemo(() => {
@@ -189,7 +204,7 @@ export default function FeedbackPhonemeSection({
                       <span>정답</span>
                       <span>내 발음</span>
                     </div>
-                    <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+                    <div className={`flex-1 min-w-0 overflow-x-auto ${pointerFine ? '' : 'scrollbar-hide'}`}>
                       <div className="flex flex-nowrap gap-1 pr-2 py-1">
                         {g.phonemes.map((cell) => {
                         const { ph, idx, perceived, isSubstitution, isDeletion } = cell;
