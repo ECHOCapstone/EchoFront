@@ -3,12 +3,12 @@
 //   1) 표준 가입: 사용자가 직접 모든 필드를 입력한다.
 //   2) OAuth 가입 완료: 백엔드가 Google/Kakao 인증을 마치고 신규 사용자를
 //      `/signup#pendingToken=...&email=...&nicknameHint=...&provider=...` 로 redirect 한 상태.
-//      이 모드에서는 비밀번호 필드를 숨기고, 이메일은 백엔드가 검증한 값으로 잠근다.
-//      사용자가 아이디 / 닉네임 / 약관 동의만 채우면 통합 회원으로 가입된다.
+//      이 모드에서는 비밀번호 필드를 숨기고 이메일은 백엔드가 검증한 값으로 잠근다.
+//      사용자가 아이디 / 닉네임 / 동의 4종만 채우면 통합 회원으로 가입된다.
 //
 // pendingToken 은 fragment 로만 받고, mount 직후 history.replaceState 로 url 에서 즉시 지운다.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Input } from './ui/input';
@@ -16,7 +16,8 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import Footer from './Footer';
-import { authApi } from '../api';
+import TermsModal from './auth/TermsModal';
+import { authApi, legalApi, type PasswordPolicy, type TermsResponse } from '../api/auth';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
@@ -27,7 +28,7 @@ type FormErrors = {
   password?: string;
   passwordConfirm?: string;
   email?: string;
-  terms?: string;
+  agreements?: string;
 };
 
 // 중복 확인 결과를 인라인으로 노출하기 위한 상태. idle 일 때는 메시지 자체가 표시되지 않는다.
@@ -41,17 +42,30 @@ type OAuthSignupContext = {
   provider: string;
 };
 
+// 동의 항목 4종 — 필수 3종 + 선택 1종.
+type Agreements = {
+  terms: boolean;
+  privacy: boolean;
+  ageOver14: boolean;
+  marketing: boolean;
+};
+
+const EMPTY_AGREEMENTS: Agreements = { terms: false, privacy: false, ageOver14: false, marketing: false };
+
 const PROVIDER_LABEL: Record<string, string> = {
   google: 'Google',
   kakao: '카카오',
 };
+
+// 정책이 백엔드에서 도착하기 전에 폼 자체가 동작하도록 최소 기본값을 둔다 — 도착 후 덮어쓴다.
+const DEFAULT_POLICY: PasswordPolicy = { minLength: 8, maxLength: 100, requireCategories: 2 };
 
 export default function SignUp() {
   const navigate = useNavigate();
   const { acceptOAuthToken } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [agreed, setAgreed] = useState(false);
+  const [agreements, setAgreements] = useState<Agreements>(EMPTY_AGREEMENTS);
   const [isSignUpComplete, setIsSignUpComplete] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [oauthCtx, setOauthCtx] = useState<OAuthSignupContext | null>(null);
@@ -67,6 +81,13 @@ export default function SignUp() {
     email: 'idle',
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  const [policy, setPolicy] = useState<PasswordPolicy>(DEFAULT_POLICY);
+  const [terms, setTerms] = useState<TermsResponse | null>(null);
+  const [modal, setModal] = useState<{ title: string; body: string } | null>(null);
+
+  // 중복확인 디바운스 타이머 — 입력이 멈춘 뒤 자동 호출.
+  const idCheckTimer = useRef<number | null>(null);
+  const emailCheckTimer = useRef<number | null>(null);
 
   // fragment 의 pendingToken 을 한 번만 읽어 OAuth 모드로 전환한다.
   // 토큰이 url 에 남으면 뒤로가기/북마크로 새는 위험이 있어 즉시 history 를 정리한다.
@@ -84,28 +105,50 @@ export default function SignUp() {
     window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
+  // 비밀번호 정책 + 약관 본문을 가입 폼 mount 시 한 번만 받는다.
+  useEffect(() => {
+    let cancelled = false;
+    authApi.passwordPolicy().then((res) => { if (!cancelled) setPolicy(res); }).catch(() => {});
+    legalApi.terms().then((res) => { if (!cancelled) setTerms(res); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // 비밀번호 정책 안내 한 줄. 백엔드 정책이 바뀌어도 폼이 자동으로 따라간다.
+  const passwordHint = useMemo(() => {
+    return `${policy.minLength}~${policy.maxLength}자, 영문 소문자 / 대문자 / 숫자 / 특수문자 중 ${policy.requireCategories}가지 이상 포함`;
+  }, [policy]);
+
   // 입력 변경 시 폼 값을 갱신하고 해당 필드의 인라인 에러를 비운다.
-  // 중복확인 대상(id/email)은 이전 확인 결과도 idle 로 되돌려 다시 확인하게 한다.
+  // 중복확인 대상(id/email)은 이전 확인 결과도 idle 로 되돌려 디바운스 후 자동 재확인한다.
   const updateField = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (field === 'nickname') return;
     setErrors((prev) => ({ ...prev, [field]: undefined }));
-    if (field === 'id' || field === 'email') {
-      setCheckStatus((prev) => ({ ...prev, [field]: 'idle' }));
+    if (field === 'id') {
+      setCheckStatus((prev) => ({ ...prev, id: 'idle' }));
+      if (idCheckTimer.current) window.clearTimeout(idCheckTimer.current);
+      const trimmed = value.trim();
+      if (trimmed) {
+        idCheckTimer.current = window.setTimeout(() => void runCheck('id', trimmed), 400);
+      }
+    } else if (field === 'email') {
+      setCheckStatus((prev) => ({ ...prev, email: 'idle' }));
+      if (emailCheckTimer.current) window.clearTimeout(emailCheckTimer.current);
+      const trimmed = value.trim();
+      if (trimmed && trimmed.includes('@')) {
+        emailCheckTimer.current = window.setTimeout(() => void runCheck('email', trimmed), 400);
+      }
     }
   };
 
-  const handleCheckDuplicate = async (field: 'id' | 'email') => {
-    const value = formData[field];
-    if (!value) return;
+  const runCheck = async (field: 'id' | 'email', value: string) => {
     try {
       const result = field === 'id'
         ? await authApi.checkUsername(value)
         : await authApi.checkEmail(value);
       setCheckStatus((prev) => ({ ...prev, [field]: result.available ? 'available' : 'taken' }));
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
-    } catch (err) {
-      notifyApiError(err, '중복 확인에 실패했습니다.');
+    } catch {
+      // 일시적 오류는 사용자를 막지 않는다 — 가입 제출 시 백엔드가 한 번 더 검증한다.
     }
   };
 
@@ -113,16 +156,26 @@ export default function SignUp() {
   const validate = (): FormErrors => {
     const next: FormErrors = {};
     if (!formData.id) next.id = '아이디를 입력해주세요.';
-    else if (checkStatus.id !== 'available') next.id = '아이디 중복확인을 해주세요.';
+    else if (checkStatus.id === 'taken') next.id = '이미 사용 중인 아이디입니다.';
+    else if (checkStatus.id !== 'available') next.id = '아이디 중복확인이 완료되지 않았습니다.';
     if (!oauthCtx) {
-      if (!formData.password) next.password = '비밀번호를 입력해주세요.';
+      if (!formData.password) {
+        next.password = '비밀번호를 입력해주세요.';
+      } else if (formData.password.length < policy.minLength) {
+        next.password = `비밀번호는 ${policy.minLength}자 이상이어야 합니다.`;
+      } else if (formData.password.length > policy.maxLength) {
+        next.password = `비밀번호는 ${policy.maxLength}자 이하여야 합니다.`;
+      }
       if (formData.password !== formData.passwordConfirm) {
         next.passwordConfirm = '비밀번호가 일치하지 않습니다.';
       }
       if (!formData.email) next.email = '이메일을 입력해주세요.';
-      else if (checkStatus.email !== 'available') next.email = '이메일 중복확인을 해주세요.';
+      else if (checkStatus.email === 'taken') next.email = '이미 사용 중인 이메일입니다.';
+      else if (checkStatus.email !== 'available') next.email = '이메일 중복확인이 완료되지 않았습니다.';
     }
-    if (!agreed) next.terms = '서비스 이용약관에 동의해주세요.';
+    if (!agreements.terms || !agreements.privacy || !agreements.ageOver14) {
+      next.agreements = '필수 항목에 모두 동의해 주세요.';
+    }
     return next;
   };
 
@@ -137,14 +190,14 @@ export default function SignUp() {
     setSubmitting(true);
     try {
       if (oauthCtx) {
-        // OAuth 가입 완료 — 토큰 응답을 그대로 받아 AuthContext 에 적용 후 메인으로 진입한다.
         const tokenResponse = await authApi.completeOAuthSignup({
           pendingToken: oauthCtx.pendingToken,
           username: formData.id,
           nickname: formData.nickname || oauthCtx.nicknameHint,
-          // 체크박스 상태를 그대로 전달 — validation 이 이미 true 를 보장하지만, 향후 validation 이 약해질
-          // 때 동의 안 한 사용자가 가입되지 않도록 하드코딩 true 대신 실제 상태를 싣는다.
-          agreedTerms: agreed,
+          agreedTerms: agreements.terms,
+          agreedPrivacy: agreements.privacy,
+          agreedAgeOver14: agreements.ageOver14,
+          agreedMarketing: agreements.marketing,
         });
         await acceptOAuthToken(tokenResponse.accessToken);
         navigate(paths.main, { replace: true });
@@ -155,11 +208,14 @@ export default function SignUp() {
         password: formData.password,
         nickname: formData.nickname,
         email: formData.email,
-        agreedTerms: agreed,
+        agreedTerms: agreements.terms,
+        agreedPrivacy: agreements.privacy,
+        agreedAgeOver14: agreements.ageOver14,
+        agreedMarketing: agreements.marketing,
       });
       setIsSignUpComplete(true);
     } catch (err) {
-      notifyApiError(err, oauthCtx ? 'Google/카카오 가입 완료에 실패했습니다.' : '회원가입에 실패했습니다.');
+      notifyApiError(err, oauthCtx ? '소셜 가입 완료에 실패했습니다.' : '회원가입에 실패했습니다.');
     } finally {
       setSubmitting(false);
     }
@@ -196,10 +252,20 @@ export default function SignUp() {
 
   const providerLabel = oauthCtx ? (PROVIDER_LABEL[oauthCtx.provider] ?? '소셜') : null;
 
+  const openTerms = (kind: 'service' | 'privacy') => {
+    if (!terms) return;
+    setModal({
+      title: kind === 'service' ? '서비스 이용약관' : '개인정보처리방침',
+      body: terms.bodies[kind] ?? '약관 본문을 불러오지 못했습니다.',
+    });
+  };
+
+  // "모두 동의" 체크. 셋이 다 켜져 있으면 켜진 것으로 표시 (마케팅까지 포함은 일부러 분리).
+  const allRequiredAgreed = agreements.terms && agreements.privacy && agreements.ageOver14;
+
   return (
     <div className="min-h-screen bg-white max-w-md mx-auto md:shadow-xl flex items-center justify-center p-4">
       <div className="w-full">
-        {/* 헤더 */}
         <div className="mb-8">
           <button
             onClick={() => navigate(paths.login)}
@@ -220,36 +286,25 @@ export default function SignUp() {
 
         {oauthCtx && (
           <div className="mb-6 rounded-xl bg-brand-50 border border-brand-200 p-3 text-sm text-brand-700">
-            {providerLabel} 로그인으로 확인된 이메일 <span className="font-semibold">{oauthCtx.email}</span> 로 가입합니다.
-            아이디와 닉네임만 정하면 끝!
+            {providerLabel} 로그인으로 확인된 이메일{' '}
+            <span className="font-semibold">{oauthCtx.email}</span> 로 가입합니다. 아이디와 닉네임, 약관 동의만 완료하면 끝!
           </div>
         )}
 
-        {/* 회원가입 폼 */}
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-          {/* ID 입력 + 중복확인 */}
           <div className="space-y-2">
             <Label htmlFor="signup-id" className="text-gray-700">아이디</Label>
-            <div className="flex gap-2">
-              <Input
-                id="signup-id"
-                type="text"
-                placeholder="아이디를 입력하세요"
-                value={formData.id}
-                onChange={(e) => updateField('id', e.target.value)}
-                aria-invalid={errors.id !== undefined}
-                aria-describedby="signup-id-message"
-                className="h-12 flex-1 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
-              />
-              <Button
-                type="button"
-                onClick={() => handleCheckDuplicate('id')}
-                disabled={!formData.id}
-                className="h-12 px-4 bg-brand-500 hover:bg-brand-600 text-white whitespace-nowrap"
-              >
-                중복확인
-              </Button>
-            </div>
+            <Input
+              id="signup-id"
+              type="text"
+              placeholder="3~50자 사이의 아이디"
+              autoComplete="username"
+              value={formData.id}
+              onChange={(e) => updateField('id', e.target.value)}
+              aria-invalid={errors.id !== undefined}
+              aria-describedby="signup-id-message"
+              className="h-12 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
+            />
             <FieldMessage
               id="signup-id-message"
               error={errors.id}
@@ -269,20 +324,23 @@ export default function SignUp() {
                     id="signup-password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="비밀번호를 입력하세요"
+                    autoComplete="new-password"
                     value={formData.password}
                     onChange={(e) => updateField('password', e.target.value)}
                     aria-invalid={errors.password !== undefined}
-                    aria-describedby="signup-password-message"
+                    aria-describedby="signup-password-message signup-password-hint"
                     className="h-12 pr-10 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
+                <p id="signup-password-hint" className="text-xs text-gray-500">{passwordHint}</p>
                 <FieldMessage id="signup-password-message" error={errors.password} />
               </div>
 
@@ -293,6 +351,7 @@ export default function SignUp() {
                     id="signup-password-confirm"
                     type={showPasswordConfirm ? 'text' : 'password'}
                     placeholder="비밀번호를 다시 입력하세요"
+                    autoComplete="new-password"
                     value={formData.passwordConfirm}
                     onChange={(e) => updateField('passwordConfirm', e.target.value)}
                     aria-invalid={errors.passwordConfirm !== undefined}
@@ -302,6 +361,7 @@ export default function SignUp() {
                   <button
                     type="button"
                     onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                    aria-label={showPasswordConfirm ? '비밀번호 숨기기' : '비밀번호 보기'}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
                     {showPasswordConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -320,20 +380,20 @@ export default function SignUp() {
             </>
           )}
 
-          {/* 닉네임 */}
           <div className="space-y-2">
             <Label htmlFor="signup-nickname" className="text-gray-700">닉네임</Label>
             <Input
               id="signup-nickname"
               type="text"
-              placeholder={oauthCtx?.nicknameHint || '닉네임을 입력하세요'}
+              placeholder={oauthCtx?.nicknameHint || '최대 30자, 표시 이름'}
+              maxLength={30}
               value={formData.nickname}
               onChange={(e) => updateField('nickname', e.target.value)}
               className="h-12 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
             />
           </div>
 
-          {/* 이메일 — OAuth 모드는 readonly + 중복확인 버튼 숨김 */}
+          {/* 이메일 — OAuth 모드는 readonly */}
           <div className="space-y-2">
             <Label htmlFor="signup-email" className="text-gray-700">이메일</Label>
             {oauthCtx ? (
@@ -346,26 +406,17 @@ export default function SignUp() {
               />
             ) : (
               <>
-                <div className="flex gap-2">
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="이메일을 입력하세요"
-                    value={formData.email}
-                    onChange={(e) => updateField('email', e.target.value)}
-                    aria-invalid={errors.email !== undefined}
-                    aria-describedby="signup-email-message"
-                    className="h-12 flex-1 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => handleCheckDuplicate('email')}
-                    disabled={!formData.email}
-                    className="h-12 px-4 bg-brand-500 hover:bg-brand-600 text-white whitespace-nowrap"
-                  >
-                    중복확인
-                  </Button>
-                </div>
+                <Input
+                  id="signup-email"
+                  type="email"
+                  placeholder="이메일을 입력하세요"
+                  autoComplete="email"
+                  value={formData.email}
+                  onChange={(e) => updateField('email', e.target.value)}
+                  aria-invalid={errors.email !== undefined}
+                  aria-describedby="signup-email-message"
+                  className="h-12 border-gray-300 focus:border-brand-500 focus:ring-brand-500"
+                />
                 <FieldMessage
                   id="signup-email-message"
                   error={errors.email}
@@ -377,27 +428,59 @@ export default function SignUp() {
             )}
           </div>
 
-          {/* 서비스 이용약관 동의 */}
-          <div className="pt-4 space-y-2">
+          {/* 동의 4종 (필수 3 + 선택 1) */}
+          <fieldset className="pt-4 space-y-3 border-t border-gray-200">
+            <legend className="text-sm font-semibold text-gray-700 pb-2">약관 동의</legend>
+
             <div className="flex items-center space-x-2">
               <Checkbox
-                id="terms"
-                checked={agreed}
+                id="agree-all"
+                checked={allRequiredAgreed && agreements.marketing}
                 onCheckedChange={(checked) => {
-                  setAgreed(checked as boolean);
-                  setErrors((prev) => ({ ...prev, terms: undefined }));
+                  const value = Boolean(checked);
+                  setAgreements({ terms: value, privacy: value, ageOver14: value, marketing: value });
+                  setErrors((prev) => ({ ...prev, agreements: undefined }));
                 }}
                 className="border-gray-300 data-[state=checked]:bg-brand-500 data-[state=checked]:border-brand-500"
               />
-              <label
-                htmlFor="terms"
-                className="text-sm text-gray-700 cursor-pointer"
-              >
-                서비스 이용약관에 동의합니다
+              <label htmlFor="agree-all" className="text-sm font-medium text-gray-900 cursor-pointer">
+                모두 동의 (선택 항목 포함)
               </label>
             </div>
-            <FieldMessage error={errors.terms} />
-          </div>
+
+            <AgreementRow
+              id="agree-terms"
+              required
+              checked={agreements.terms}
+              onChange={(value) => setAgreements((prev) => ({ ...prev, terms: value }))}
+              label="이용약관에 동의합니다"
+              detailLabel="이용약관"
+              onOpen={() => openTerms('service')}
+            />
+            <AgreementRow
+              id="agree-privacy"
+              required
+              checked={agreements.privacy}
+              onChange={(value) => setAgreements((prev) => ({ ...prev, privacy: value }))}
+              label="개인정보처리방침에 동의합니다"
+              detailLabel="개인정보처리방침"
+              onOpen={() => openTerms('privacy')}
+            />
+            <AgreementRow
+              id="agree-age"
+              required
+              checked={agreements.ageOver14}
+              onChange={(value) => setAgreements((prev) => ({ ...prev, ageOver14: value }))}
+              label="만 14세 이상입니다"
+            />
+            <AgreementRow
+              id="agree-marketing"
+              checked={agreements.marketing}
+              onChange={(value) => setAgreements((prev) => ({ ...prev, marketing: value }))}
+              label="마케팅 정보 수신에 동의합니다"
+            />
+            <FieldMessage error={errors.agreements} />
+          </fieldset>
 
           <Button
             type="submit"
@@ -412,6 +495,48 @@ export default function SignUp() {
           <Footer />
         </div>
       </div>
+
+      {modal && <TermsModal title={modal.title} body={modal.body} onClose={() => setModal(null)} />}
+    </div>
+  );
+}
+
+interface AgreementRowProps {
+  id: string;
+  checked: boolean;
+  required?: boolean;
+  label: string;
+  detailLabel?: string;
+  onChange: (checked: boolean) => void;
+  onOpen?: () => void;
+}
+
+function AgreementRow({ id, checked, required, label, detailLabel, onChange, onOpen }: AgreementRowProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id={id}
+          checked={checked}
+          onCheckedChange={(value) => onChange(Boolean(value))}
+          className="border-gray-300 data-[state=checked]:bg-brand-500 data-[state=checked]:border-brand-500"
+        />
+        <label htmlFor={id} className="text-sm text-gray-700 cursor-pointer">
+          <span className={required ? 'text-red-500 mr-1' : 'text-gray-400 mr-1'}>
+            {required ? '[필수]' : '[선택]'}
+          </span>
+          {label}
+        </label>
+      </div>
+      {detailLabel && onOpen && (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="text-xs text-brand-600 hover:text-brand-700 underline"
+        >
+          {detailLabel} 보기
+        </button>
+      )}
     </div>
   );
 }

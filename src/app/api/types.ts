@@ -20,6 +20,9 @@ export type User = {
   streak: number;
   exp: number;
   role: Role;
+  // 일반 비밀번호로 로그인 가능한 계정인지 — OAuth 전용 가입자는 false. 프론트가 본인 확인 칸을 숨기거나
+  // "비밀번호 변경"을 비활성화하는 데 사용한다.
+  hasPassword: boolean;
   createdAt: string;
 };
 
@@ -302,4 +305,18 @@ export type BadgeInput = {
   name: string;
   condition: string;
   threshold: number;
+};
+
+// 어드민 약관 관리에서 받아오는 한 종류 약관 본문 + override 여부.
+export type LegalTermsEntry = {
+  kind: string;
+  label: string;
+  body: string;
+  overridden: boolean;
+};
+
+export type LegalTermsCatalog = {
+  version: string;
+  entries: LegalTermsEntry[];
+  seedStatus: SeedFileStatus;
 };

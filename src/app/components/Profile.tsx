@@ -6,6 +6,8 @@ import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import Footer from './Footer';
 import TextEditDialog from './TextEditDialog';
+import ChangePasswordDialog from './auth/ChangePasswordDialog';
+import WithdrawDialog from './auth/WithdrawDialog';
 import { authApi } from '../api';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
@@ -19,11 +21,22 @@ export default function Profile() {
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [updatingNickname, setUpdatingNickname] = useState(false);
   const [nicknameDialogOpen, setNicknameDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
 
   const nickname = user?.nickname ?? '사용자';
   const email = user?.email ?? '';
+  // OAuth 전용 계정은 비밀번호 변경 / 본인 확인 칸을 가린다 — 백엔드 응답의 hasPassword 가 단일 출처.
+  // user 가 아직 로드 안 됐을 때(undefined)는 true 로 가정해 메뉴를 빈 상태로 두지 않는다.
+  const hasPassword = user?.hasPassword ?? true;
 
-  const handlePasswordChange = () => notifyInfo('비밀번호 변경은 추후 제공될 예정입니다.');
+  const handlePasswordChange = () => {
+    if (!hasPassword) {
+      notifyInfo('소셜 로그인 전용 계정은 비밀번호가 없어요. 비밀번호 변경 대신 소셜 계정에서 보안을 관리해 주세요.');
+      return;
+    }
+    setPasswordDialogOpen(true);
+  };
   const handleNotificationToggle = () => setNotificationEnabled((v) => !v);
   const handleTermsAndPolicy = () => notifyInfo('약관 및 정책은 추후 제공될 예정입니다.');
 
@@ -47,20 +60,19 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    const ok = await confirm({
-      title: '회원탈퇴',
-      description: '정말로 회원탈퇴 하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
-      confirmLabel: '탈퇴',
-      destructive: true,
-    });
-    if (ok) notifyInfo('회원탈퇴는 추후 제공될 예정입니다.');
+  const handleDeleteAccount = () => setWithdrawDialogOpen(true);
+
+  // 탈퇴 성공 후 호출되는 콜백. 토큰을 정리하고 로그인 화면으로 보낸다.
+  const handleWithdrawn = async () => {
+    setWithdrawDialogOpen(false);
+    await logout();
+    navigate(paths.login, { replace: true });
   };
 
   const handleLogout = async () => {
     const ok = await confirm({ title: '로그아웃', description: '로그아웃 하시겠습니까?', confirmLabel: '로그아웃' });
     if (!ok) return;
-    logout();
+    await logout();
     navigate(paths.login, { replace: true });
   };
 
@@ -117,13 +129,20 @@ export default function Profile() {
 
           <button
             onClick={handlePasswordChange}
-            className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
+            className={`w-full rounded-xl p-4 flex items-center justify-between transition-colors ${
+              hasPassword ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-50 opacity-60'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <div className="bg-brand-100 rounded-full p-2">
-                <Lock size={20} className="text-brand-500" />
+              <div className={`rounded-full p-2 ${hasPassword ? 'bg-brand-100' : 'bg-gray-200'}`}>
+                <Lock size={20} className={hasPassword ? 'text-brand-500' : 'text-gray-500'} />
               </div>
-              <span className="font-medium text-gray-900">비밀번호 설정</span>
+              <div className="text-left">
+                <span className="block font-medium text-gray-900">비밀번호 변경</span>
+                {!hasPassword && (
+                  <span className="block text-xs text-gray-500">소셜 로그인 계정은 사용 불가</span>
+                )}
+              </div>
             </div>
             <span className="text-gray-400">›</span>
           </button>
@@ -213,6 +232,18 @@ export default function Profile() {
         maxLength={30}
         submitLabel="저장"
         onSubmit={handleNicknameSubmit}
+      />
+
+      <ChangePasswordDialog
+        open={passwordDialogOpen}
+        onClose={() => setPasswordDialogOpen(false)}
+      />
+
+      <WithdrawDialog
+        open={withdrawDialogOpen}
+        hasPassword={hasPassword}
+        onClose={() => setWithdrawDialogOpen(false)}
+        onWithdrawn={handleWithdrawn}
       />
     </div>
   );

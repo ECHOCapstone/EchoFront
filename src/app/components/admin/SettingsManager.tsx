@@ -19,6 +19,7 @@ function splitKey(key: string): { group: string; label: string } {
 const GROUP_LABELS: Record<string, string> = {
   gamification: '게임화 수치',
   messages: '메시지',
+  auth: '인증 / 비밀번호 정책',
 };
 
 export default function SettingsManager() {
