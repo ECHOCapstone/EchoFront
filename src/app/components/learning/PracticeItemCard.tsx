@@ -9,11 +9,13 @@
 //     "any...", "pers..." 같은 truncate 가 사라진다.
 // 시도 결과의 헤드라인 / 색 / 효과음은 feedbackPresentation (SSOT) 이 결정한다.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { toast } from 'sonner';
 import { BotBubble } from '../ChatBubble';
 import RecordButton from '../RecordButton';
 import { feedbackApi, type PhonemeTip, type PracticeItem } from '../../api';
 import { useRecorder } from '../../hooks/useRecorder';
+import { useRecordingLock } from '../../hooks/useRecordingLock';
 import { notifyApiError } from '../../lib/notify';
 import { playScoreFanfare } from '../../lib/scoreFanfare';
 import { renderInlineMarkdown } from '../../lib/markdownLite';
@@ -48,6 +50,9 @@ const KIND_BADGE_CLASS: Record<PracticeItem['kind'], string> = {
 
 export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardProps) {
   const recorder = useRecorder();
+  // 카드별 고유 잠금 키. 같은 카드의 start / stop 만 lock 을 잡고 푼다.
+  const lockKey = useId();
+  const lock = useRecordingLock();
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [busy, setBusy] = useState(false);
   // 학습 도중 권한 모달을 닫으면 다음 권한 상태 변화 (정상 / recording) 가 올 때까지 다시 안 띄운다.
@@ -59,12 +64,20 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
     }
   }, [recorder.status]);
 
+  // 카드 unmount 시 자신이 보유한 lock 을 자동 해제 — 다른 카드 / 다음 학습이 막히지 않게 한다.
+  useEffect(() => () => lock.release(lockKey), [lock, lockKey]);
+
   const showMicModal =
     !micModalDismissed &&
     (recorder.status === 'denied' || recorder.status === 'unsupported');
 
   const handleStart = async () => {
     if (busy) return;
+    // 다른 카드가 이미 녹음 중이면 즉시 차단 — 동시 getUserMedia 호출 충돌 / 마이크 경쟁 방지.
+    if (!lock.acquire(lockKey)) {
+      toast.info('다른 카드가 녹음 중이에요. 끝나면 다시 시도해 주세요.');
+      return;
+    }
     await recorder.start();
   };
 
@@ -72,6 +85,7 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
     if (busy) return;
     setBusy(true);
     const result = await recorder.stop();
+    lock.release(lockKey);
     if (!result) {
       setBusy(false);
       return;

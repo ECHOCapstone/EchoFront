@@ -128,6 +128,18 @@ export function useRecorder() {
 
   useEffect(() => () => cancel(), [cancel]);
 
+  // 페이지가 백그라운드로 가면 모바일 브라우저가 마이크 stream 을 정지해 무음 녹음이 만들어진다.
+  // visibilitychange 로 그 시점을 잡아 진행 중 녹음을 명시적으로 cancel — 빈 녹음을 업로드하는 회귀를 막는다.
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'hidden' && recorderRef.current?.state === 'recording') {
+        cancel();
+      }
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, [cancel]);
+
   return {
     status,
     errorMessage,
