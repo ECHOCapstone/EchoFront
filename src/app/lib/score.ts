@@ -8,9 +8,10 @@
 export const PASS_THRESHOLD_FALLBACK = 75;
 
 // 합격선을 통과한 점수 중 "우수" 로 강조할 임계. great tier 의 입구.
-// 백엔드 정책이 아닌 시각화 임계라 FE 에 둔다. 합격선과 같은 값으로 두면 통과 = 우수 = 초록 + 효과음이 되어,
-// 학습자가 통과 시 즉시 확실한 보상 신호를 받는다.
-export const EXCELLENCE_THRESHOLD = 75;
+// 백엔드 정책이 아닌 시각화 임계라 FE 에 둔다. 합격선보다 높게 두어 학습자가 "통과" 와 "우수" 를 구분할 수 있게 한다.
+// (합격선 75 / 우수 90 → 75~89 는 good tier 의 brand 색, 90+ 는 great tier 의 green + 효과음)
+// 이 단계가 있어야 "통과는 했지만 더 높일 여지" 가 점수 시각에 그대로 드러나 학습 동기를 끌어올린다.
+export const EXCELLENCE_THRESHOLD = 90;
 
 // 합격선 미만에서 "보통(주황)" 과 "낮음(빨강)" 을 가르는 비율 — passThreshold × 이 비율 미만이면 poor.
 // 합격선 80 기준 50 점 근처가 경계가 된다.

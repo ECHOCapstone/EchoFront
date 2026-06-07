@@ -92,6 +92,9 @@ export default function LearningChatFlow({
       useState<Record<number, number>>(initial.latestRecordingByPromptId);
   const [busyStep, setBusyStep] = useState(false);
   const [doneSignaled, setDoneSignaled] = useState(false);
+  // 한 FeedbackBubble 의 "다시 발음하기" / "다음 단계로" 가 한 번 클릭되면 그 카드의 키를 기록해 즉시 비활성화한다.
+  // 같은 카드의 같은 버튼을 빠르게 여러 번 누르면 chat 끝에 동일 prompt 카드가 중복 추가되는 race 를 막는다.
+  const [actionTakenFeedbackKeys, setActionTakenFeedbackKeys] = useState<Set<string>>(new Set());
   // 사용자가 권한 모달을 "나중에" 로 닫았는지. status 가 다시 denied 로 떨어져도 같은 세션 동안은 안 띄운다.
   const [micModalDismissed, setMicModalDismissed] = useState(false);
 
@@ -191,6 +194,13 @@ export default function LearningChatFlow({
 
   const handleRetry = () => {
     if (!currentPrompt) return;
+    // 가장 최근 feedback 카드가 이미 한 번 액션을 받았다면 race 로 인한 중복 추가를 차단한다.
+    if (latestFeedbackKey === null || actionTakenFeedbackKeys.has(latestFeedbackKey)) return;
+    setActionTakenFeedbackKeys((prev) => {
+      const next = new Set(prev);
+      next.add(latestFeedbackKey);
+      return next;
+    });
     setChat((prev) => [
       ...prev,
       { kind: 'bot-prompt', key: `p-${currentPrompt.id}-retry-${prev.length}`, prompt: currentPrompt },
@@ -199,6 +209,15 @@ export default function LearningChatFlow({
 
   const handleAdvance = () => {
     if (doneSignaled) return;
+    // "다음 단계로" 도 같은 카드에서 두 번 트리거되면 promptIndex 가 두 칸 점프하므로 같은 락을 적용한다.
+    if (latestFeedbackKey !== null) {
+      if (actionTakenFeedbackKeys.has(latestFeedbackKey)) return;
+      setActionTakenFeedbackKeys((prev) => {
+        const next = new Set(prev);
+        next.add(latestFeedbackKey);
+        return next;
+      });
+    }
     // 방금 사용자가 "다음으로" 를 눌렀다는 건 promptIndex 위치의 prompt 를 완료했다는 의미.
     // 부모가 백엔드 진행 상태를 갱신할 수 있게 인덱스를 통보한다 (실패해도 학습 흐름은 막지 않는다).
     const completedIndex = promptIndex;
@@ -245,13 +264,15 @@ export default function LearningChatFlow({
         }
 
         if (item.kind === 'bot-feedback') {
-          // 가장 최근 피드백이고 현재 prompt 와 일치할 때만 액션 버튼을 활성화한다.
+          // 가장 최근 피드백이고 현재 prompt 와 일치하며, 아직 액션이 한 번도 발생하지 않은 카드만 활성.
+          // actionTakenFeedbackKeys 가드가 더해져 같은 카드의 두 번째 클릭이 시각적으로도 즉시 막힌다.
           const isActive =
             !disabled &&
             !doneSignaled &&
             item.key === latestFeedbackKey &&
             currentPrompt !== null &&
-            item.promptId === currentPrompt.id;
+            item.promptId === currentPrompt.id &&
+            !actionTakenFeedbackKeys.has(item.key);
           return (
             <FeedbackBubble
               key={item.key}

@@ -384,7 +384,8 @@ export default function SessionDetail() {
         </div>
       </div>
 
-      <BottomNav variant="study" active="home" />
+      {/* 세션 학습 중에는 어떤 탭도 강조하지 않는다 — 본문이 현재 위치를 명확히 보여주므로 home 강조는 오해. */}
+      <BottomNav variant="study" />
 
       <TextEditDialog
         open={titleDialogOpen}

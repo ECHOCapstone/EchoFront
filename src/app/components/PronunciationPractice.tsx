@@ -363,7 +363,8 @@ export default function PronunciationPractice() {
         </div>
       </div>
 
-      <BottomNav variant="study" active="home" />
+      {/* 학습 중에는 어떤 탭도 강조하지 않는다 — 본문 자체가 "현재 학습 중" 임을 명확히 보여주므로 home 강조는 오해. */}
+      <BottomNav variant="study" />
 
       {/* 트랙 마지막 챕터까지 끝낸 직후의 축하 모달. 닫으면 트랙 상세로 이동. */}
       <AlertDialog open={trackCompleteOpen} onOpenChange={setTrackCompleteOpen}>

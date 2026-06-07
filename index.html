@@ -2,7 +2,10 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover : iOS Safari/PWA 에서 노치/홈 인디케이터 영역까지 콘텐츠가 그려질 수 있게 한다.
+         CSS 의 env(safe-area-inset-*) 와 짝지어 BottomNav / 본문 컨테이너의 안전 영역을 보정한다. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#FFFFFF" />
     <title>ECHO</title>
   </head>
   <body>
