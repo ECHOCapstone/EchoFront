@@ -8,21 +8,37 @@ import Footer from './Footer';
 import TextEditDialog from './TextEditDialog';
 import ChangePasswordDialog from './auth/ChangePasswordDialog';
 import WithdrawDialog from './auth/WithdrawDialog';
-import { authApi } from '../api';
+import TermsModal from './auth/TermsModal';
+import { authApi, legalApi, type TermsResponse } from '../api/auth';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import { notifyApiError, notifyInfo } from '../lib/notify';
 import { useConfirm } from './ConfirmProvider';
 
+// 알림 토글의 영속 키. localStorage 가 비활성화된 환경 (시크릿 모드 등) 에서도 안전한 기본값을 유지한다.
+const NOTIFICATION_STORAGE_KEY = 'echo.notificationEnabled';
+
+function readNotificationEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem(NOTIFICATION_STORAGE_KEY);
+    return raw === null ? true : raw === 'true';
+  } catch {
+    return true;
+  }
+}
+
 export default function Profile() {
   const navigate = useNavigate();
   const { user, logout, refresh } = useAuth();
   const confirm = useConfirm();
-  const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const [notificationEnabled, setNotificationEnabled] = useState<boolean>(readNotificationEnabled);
   const [updatingNickname, setUpdatingNickname] = useState(false);
   const [nicknameDialogOpen, setNicknameDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
+  // 약관 본문은 lazy 로드 — Profile 진입마다 받지 않고 사용자가 항목을 누른 시점에 한 번 가져온다.
+  const [terms, setTerms] = useState<TermsResponse | null>(null);
+  const [termsModal, setTermsModal] = useState<{ title: string; body: string } | null>(null);
 
   const nickname = user?.nickname ?? '사용자';
   const email = user?.email ?? '';
@@ -37,8 +53,36 @@ export default function Profile() {
     }
     setPasswordDialogOpen(true);
   };
-  const handleNotificationToggle = () => setNotificationEnabled((v) => !v);
-  const handleTermsAndPolicy = () => notifyInfo('약관 및 정책은 추후 제공될 예정입니다.');
+  const handleNotificationToggle = () => {
+    setNotificationEnabled((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(NOTIFICATION_STORAGE_KEY, String(next));
+      } catch {
+        // localStorage 비활성화 환경 (시크릿 모드 등) 은 무시한다.
+      }
+      return next;
+    });
+  };
+
+  // 사용자가 항목을 누른 시점에 약관 본문을 가져오고, 이미 받아 둔 캐시가 있으면 재사용한다.
+  const openTerms = async (kind: 'service' | 'privacy') => {
+    let data = terms;
+    if (!data) {
+      try {
+        data = await legalApi.terms();
+        setTerms(data);
+      } catch (err) {
+        notifyApiError(err, '약관을 불러오지 못했습니다.');
+        return;
+      }
+    }
+    setTermsModal({
+      title: kind === 'service' ? '서비스 이용약관' : '개인정보처리방침',
+      body: data.bodies[kind] ?? '약관 본문을 불러오지 못했습니다.',
+    });
+  };
+
 
   const openNicknameDialog = () => {
     if (updatingNickname) return;
@@ -173,18 +217,32 @@ export default function Profile() {
             </div>
           </button>
 
-          <button
-            onClick={handleTermsAndPolicy}
-            className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="bg-brand-100 rounded-full p-2">
-                <FileText size={20} className="text-brand-500" />
+          <div className="space-y-2">
+            <button
+              onClick={() => openTerms('service')}
+              className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-brand-100 rounded-full p-2">
+                  <FileText size={20} className="text-brand-500" />
+                </div>
+                <span className="font-medium text-gray-900">이용약관</span>
               </div>
-              <span className="font-medium text-gray-900">약관 및 정책</span>
-            </div>
-            <span className="text-gray-400">›</span>
-          </button>
+              <span className="text-gray-400">›</span>
+            </button>
+            <button
+              onClick={() => openTerms('privacy')}
+              className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-brand-100 rounded-full p-2">
+                  <FileText size={20} className="text-brand-500" />
+                </div>
+                <span className="font-medium text-gray-900">개인정보처리방침</span>
+              </div>
+              <span className="text-gray-400">›</span>
+            </button>
+          </div>
 
           <button
             onClick={handleDeleteAccount}
@@ -245,6 +303,14 @@ export default function Profile() {
         onClose={() => setWithdrawDialogOpen(false)}
         onWithdrawn={handleWithdrawn}
       />
+
+      {termsModal && (
+        <TermsModal
+          title={termsModal.title}
+          body={termsModal.body}
+          onClose={() => setTermsModal(null)}
+        />
+      )}
     </div>
   );
 }

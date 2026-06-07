@@ -52,12 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user = await authApi.me();
       setState({ status: 'authenticated', user });
     } catch (e) {
-      // 토큰 만료(401/403)나 백엔드 재기동으로 사용자 레코드가 사라진 경우(404 USER_NOT_FOUND)는
-      // 토큰을 폐기하고 로그아웃한다. 그 외 네트워크/서버 오류는 토큰을 남겨 두어(재시도 시 복구 가능)
-      // 이번 로드만 미인증으로 처리한다.
+      // 토큰 만료 (401 / 403) 와 백엔드가 사용자 레코드를 잃은 경우 (USER_NOT_FOUND) 만 토큰을 폐기한다.
+      // 일반 404 (예: 게이트웨이 오류 응답) 는 토큰 폐기 사유가 아니다 — 잘못 강제 로그아웃되는 회귀를 막는다.
+      // 그 외 네트워크/서버 오류는 토큰을 남겨 두어 재시도 시 복구 가능하게 한다.
       if (e instanceof ApiException) {
         const tokenStale =
-          e.status === 401 || e.status === 403 || e.status === 404 || e.code === 'USER_NOT_FOUND';
+          e.status === 401 || e.status === 403 || e.code === 'USER_NOT_FOUND';
         if (tokenStale) {
           setAccessToken(null);
         }

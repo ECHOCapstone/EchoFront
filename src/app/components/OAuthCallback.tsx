@@ -39,7 +39,7 @@ export default function OAuthCallback() {
         await acceptOAuthToken(token);
         navigate(paths.main, { replace: true });
       } catch (err) {
-        notifyApiError(err, 'Google 로그인 처리에 실패했습니다.');
+        notifyApiError(err, '소셜 로그인 처리에 실패했습니다.');
         navigate(`${paths.login}?oauthError=session_failed`, { replace: true });
       }
     })();

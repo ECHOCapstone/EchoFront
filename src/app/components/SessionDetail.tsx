@@ -153,10 +153,8 @@ export default function SessionDetail() {
       feedbackApi
         .generate({ sessionId: session.id, recordingIds }, controller.signal)
         .then(setFeedback)
-        .catch((err: unknown) => {
-          if (err instanceof DOMException && err.name === 'AbortError') return;
-          notifyApiError(err, '피드백 생성에 실패했습니다.');
-        })
+        // ApiException(ABORTED) 는 notifyApiError 가 무시한다.
+        .catch((err: unknown) => notifyApiError(err, '피드백 생성에 실패했습니다.'))
         .finally(() => {
           if (generateAbortRef.current === controller) {
             generateAbortRef.current = null;

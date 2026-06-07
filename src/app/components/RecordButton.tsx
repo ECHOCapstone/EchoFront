@@ -27,7 +27,9 @@ export type RecordButtonVariant = 'block' | 'inline';
 interface RecordButtonProps {
   isRecording: boolean;
   busy?: boolean;
-  onStart: () => void;
+  // 녹음 시작 트리거. 결과가 false 면 권한 거부 / 미지원 등으로 실제 녹음에 진입하지 못한 것으로
+  // 보고 카운트다운을 즉시 중단한다. void 반환도 호환된다 (기존 호출 측은 그대로 동작).
+  onStart: () => void | Promise<boolean | void>;
   onStop: () => void;
   idleLabel?: string;
   recordingLabel?: string;
@@ -83,8 +85,17 @@ export default function RecordButton({
     if (inCountdown) return; // 카운트다운 중 중복 클릭 무시
     // mic stream 워밍업 latency 를 카운트다운 동안 흡수하기 위해 onStart 를 먼저 호출하고
     // 그 다음 시각 카운트다운을 시작한다.
-    onStartRef.current();
+    const result = onStartRef.current();
     setCountdown(COUNTDOWN_FROM);
+    // onStart 가 Promise<boolean> 을 돌려주면 false 일 때 (권한 거부 / 미지원) 카운트다운을 즉시 끊는다 —
+    // "2초 기다렸는데 녹음이 시작 안 됨" 같은 회귀를 막는다. void 반환 호출 측은 영향 없음.
+    if (result && typeof (result as Promise<unknown>).then === 'function') {
+      (result as Promise<boolean | void>).then((started) => {
+        if (started === false) {
+          setCountdown(null);
+        }
+      });
+    }
   };
 
   const iconSize = variant === 'block' ? 20 : 18;

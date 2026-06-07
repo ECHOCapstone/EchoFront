@@ -194,11 +194,8 @@ export default function PronunciationPractice() {
       feedbackApi
         .generate({ scriptId: script.id, recordingIds }, controller.signal)
         .then(setFeedback)
-        .catch((err: unknown) => {
-          // 정상 abort 는 사용자에게 알리지 않는다 — 컴포넌트 이탈이 명시적 행동이므로 토스트가 거슬린다.
-          if (err instanceof DOMException && err.name === 'AbortError') return;
-          notifyApiError(err, '피드백 생성에 실패했습니다.');
-        })
+        // ApiException(ABORTED) 는 notifyApiError 가 알아서 무시한다.
+        .catch((err: unknown) => notifyApiError(err, '피드백 생성에 실패했습니다.'))
         .finally(() => {
           if (generateAbortRef.current === controller) {
             generateAbortRef.current = null;

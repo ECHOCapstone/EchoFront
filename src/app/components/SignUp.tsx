@@ -89,6 +89,11 @@ export default function SignUp() {
   // 중복확인 디바운스 타이머 — 입력이 멈춘 뒤 자동 호출.
   const idCheckTimer = useRef<number | null>(null);
   const emailCheckTimer = useRef<number | null>(null);
+  // unmount 시 남아 있는 디바운스 타이머가 setState 를 호출하면 React 경고가 발생한다 — 한 번에 정리한다.
+  useEffect(() => () => {
+    if (idCheckTimer.current) window.clearTimeout(idCheckTimer.current);
+    if (emailCheckTimer.current) window.clearTimeout(emailCheckTimer.current);
+  }, []);
 
   // fragment 의 pendingToken 을 한 번만 읽어 OAuth 모드로 전환한다.
   // 토큰이 url 에 남으면 뒤로가기/북마크로 새는 위험이 있어 즉시 history 를 정리한다.
@@ -99,7 +104,9 @@ export default function SignUp() {
     const pendingToken = params.get('pendingToken');
     if (!pendingToken) return;
     const email = params.get('email') ?? '';
-    const nicknameHint = params.get('nicknameHint') ?? '';
+    // nicknameHint 는 fragment 로 들어오는 값이라 길이 검증 우회 가능 — 닉네임 컬럼 길이(30) 에 맞춰 잘라
+    // 폼 초기값을 정규화한다.
+    const nicknameHint = (params.get('nicknameHint') ?? '').slice(0, 30);
     const provider = params.get('provider') ?? '';
     setOauthCtx({ pendingToken, email, nicknameHint, provider });
     setFormData((prev) => ({ ...prev, email, nickname: nicknameHint }));

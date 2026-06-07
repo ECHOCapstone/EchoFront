@@ -11,7 +11,9 @@ export class ApiException extends Error {
   readonly status: number;
 
   constructor(error: ApiError, status: number) {
-    super(error.message);
+    // message 가 빈 문자열이면 Error.message 도 빈 문자열이 되어 토스트 / 로그에 공백만 보이는
+    // 사용자 불친절 회귀가 생긴다. 백엔드가 message 를 비워도 code 를 사용해 식별 가능한 텍스트를 보장한다.
+    super(error.message && error.message.length > 0 ? error.message : error.code);
     this.code = error.code;
     this.status = status;
   }
@@ -76,7 +78,16 @@ async function request<T>(method: string, path: string, init: RequestInit = {}):
     body = init.formData;
   }
 
-  const response = await fetch(buildUrl(path, init.query), { method, headers, body, signal: init.signal });
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path, init.query), { method, headers, body, signal: init.signal });
+  } catch (err) {
+    // AbortSignal 로 끊긴 요청은 정상 흐름 — 호출 측이 같은 ApiException 분기에서 ABORTED 코드로 식별할 수 있게 통일한다.
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiException({ code: 'ABORTED', message: '요청이 취소되었습니다.' }, 0);
+    }
+    throw err;
+  }
 
   if (init.expect === 'blob') {
     if (!response.ok) {

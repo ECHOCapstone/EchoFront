@@ -1,7 +1,9 @@
 // 약관 본문을 풀스크린 모달로 표시한다. SignUp 의 "약관 보기 / 개인정보처리방침 보기" 링크가 호출한다.
 // 본문은 GET /api/legal/terms 로 한 번 받아 둔 결과를 재활용한다.
+// `**bold**` 마커가 들어와도 별 두 개로 노출되지 않게 markdown-lite 로 렌더 — 줄바꿈도 자연스럽게 흐른다.
 
 import { X } from 'lucide-react';
+import { renderInlineMarkdown } from '../../lib/markdownLite';
 
 interface Props {
   title: string;
@@ -33,10 +35,9 @@ export default function TermsModal({ title, body, onClose }: Props) {
             <X size={20} className="text-gray-600" />
           </button>
         </div>
-        {/* whitespace-pre-wrap 으로 마크다운 그대로 표시. 본격 마크다운 렌더는 후속 작업으로 분리. */}
-        <pre className="px-5 py-4 overflow-y-auto text-sm text-gray-700 leading-relaxed font-sans whitespace-pre-wrap">
-          {body}
-        </pre>
+        <div className="px-5 py-4 overflow-y-auto text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+          {renderInlineMarkdown(body)}
+        </div>
       </div>
     </div>
   );

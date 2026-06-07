@@ -27,6 +27,8 @@ const KOREAN_ERROR_MESSAGES: Record<string, string> = {
 // 구체 메시지를 우선하는 이유: 매핑을 무조건 앞세우면 백엔드가 보낸 교정 안내가 가려진다.
 export function notifyApiError(err: unknown, fallback: string): void {
   if (err instanceof ApiException) {
+    // AbortController 로 끊긴 정상 이탈은 사용자에게 알리지 않는다 — 본인이 명시적으로 한 행동이므로.
+    if (err.code === 'ABORTED') return;
     const localized = KOREAN_ERROR_MESSAGES[err.code];
     const backendMessage = err.message?.trim();
     // 백엔드가 ErrorCode 의 default 가 아닌 구체 message 를 보냈으면 그쪽이 더 유용하다.

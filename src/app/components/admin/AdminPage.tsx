@@ -55,7 +55,8 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold text-gray-900">관리자</h1>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-6">
+        {/* 탭이 8 개라 grid-cols-4 가 2 행으로 깔끔하게 차오른다 — cols-3 은 마지막 행에 2 개만 남아 정렬이 깨졌다. */}
+        <div className="grid grid-cols-4 gap-2 mb-6">
           {TABS.map((t) => (
             <button
               key={t.key}
