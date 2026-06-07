@@ -12,6 +12,7 @@ import { BotBubble } from '../ChatBubble';
 import FeedbackPhonemeSection from '../FeedbackPhonemeSection';
 import type { CanonicalWord, PhonemeError, PhonemeTip, SpeechRate, WrongWord } from '../../api';
 import { playScoreFanfare } from '../../lib/scoreFanfare';
+import { renderInlineMarkdown } from '../../lib/markdownLite';
 import { feedbackPresentation, selectWeakPhonemeTips } from './feedbackPresentation';
 
 // 음소 정렬 결과 스냅샷. 피드백 말풍선이 음소 단위 시각화를 그릴 때 쓴다.
@@ -144,7 +145,9 @@ export default function FeedbackBubble({
       {/* 펼침 상태 — 가이드 / FAST 배지 / 약점 / 음소 시각화 + 접기 버튼. */}
       {expanded && (
         <>
-          <p className="text-sm text-gray-700 leading-relaxed mb-3">{data.guidanceKr || ' '}</p>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3">
+            {data.guidanceKr ? renderInlineMarkdown(data.guidanceKr) : ' '}
+          </p>
           {data.speechRate === 'FAST' && (
             <div className="mb-3 inline-flex items-center gap-1 rounded-full bg-yellow-100 border border-yellow-200 px-2.5 py-1 text-xs font-medium text-yellow-800">
               <span>⏱</span>

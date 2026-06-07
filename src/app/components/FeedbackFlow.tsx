@@ -13,6 +13,7 @@ import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 import { celebrateChapter } from '../lib/reward';
 import { accuracyColorClass } from '../lib/score';
+import { renderInlineMarkdown } from '../lib/markdownLite';
 import booExp from '@/assets/boo-pic/BOO12-2.png';
 
 interface FeedbackFlowProps {
@@ -88,7 +89,9 @@ export default function FeedbackFlow({
           이번 학습 정확도는 <span className={`font-bold ${accuracyColor}`}>{feedback.accuracy.toFixed(1)}점</span>이에요.
         </p>
         {feedback.guidanceKr && (
-          <p className="text-gray-700 leading-relaxed">{feedback.guidanceKr}</p>
+          <p className="text-gray-700 leading-relaxed">
+            {renderInlineMarkdown(feedback.guidanceKr)}
+          </p>
         )}
       </BotBubble>
 
