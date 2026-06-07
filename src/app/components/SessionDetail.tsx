@@ -8,7 +8,7 @@
 //
 // 채팅 흐름은 PronunciationPractice 와 LearningChatFlow 컴포넌트를 공유한다.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -21,6 +21,7 @@ import LearningChatFlow, { type LearningPrompt } from './learning/LearningChatFl
 import TextEditDialog from './TextEditDialog';
 import {
   feedbackApi,
+  progressApi,
   recordingsApi,
   sessionsApi,
   type Feedback,
@@ -29,6 +30,7 @@ import {
 } from '../api';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
+import { useLearningSafeguards } from '../hooks/useLearningSafeguards';
 import { useConfirm } from './ConfirmProvider';
 
 // 문장 한 개를 LearningChatFlow 가 받는 prompt 로 변환한다. 매 prompt 가 RECORD 라
@@ -60,6 +62,8 @@ export default function SessionDetail() {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [generating, setGenerating] = useState(false);
   const [titleDialogOpen, setTitleDialogOpen] = useState(false);
+  // 진행 중인 종합 피드백 생성 요청을 추적해 컴포넌트 unmount 시 fetch 를 끊는다.
+  const generateAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (sessionId === null) {
@@ -91,6 +95,42 @@ export default function SessionDetail() {
   // sentences 가 바뀌면 LearningChatFlow 를 리마운트해 채팅을 초기화한다.
   const chatKey = useMemo(() => prompts.map((p) => p.id).join(','), [prompts]);
 
+  // 진입 시 진행 상태 로드. 챕터 흐름과 같은 정책 — exists 면 confirm, null 은 미해결 (UI 가림).
+  const [resumeFromIndex, setResumeFromIndex] = useState<number | null>(0);
+  useEffect(() => {
+    if (sessionId === null) return;
+    setResumeFromIndex(null);
+    let cancelled = false;
+    progressApi.session
+      .get(sessionId)
+      .then(async (progress) => {
+        if (cancelled) return;
+        if (!progress.exists || progress.lastCompletedIndex < 0) {
+          setResumeFromIndex(0);
+          return;
+        }
+        const proceed = await confirm({
+          title: '이어서 학습',
+          description: '이전 진행이 남아 있습니다. 이어서 학습하시겠습니까?',
+          confirmLabel: '이어서',
+          cancelLabel: '처음부터',
+        });
+        if (cancelled) return;
+        if (proceed) {
+          setResumeFromIndex(progress.lastCompletedIndex + 1);
+        } else {
+          await progressApi.session.reset(sessionId).catch(() => {});
+          if (!cancelled) setResumeFromIndex(0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setResumeFromIndex(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, confirm]);
+
   const upload = useCallback(
     async (audio: Blob, prompt: LearningPrompt) => {
       return recordingsApi.upload({
@@ -106,15 +146,29 @@ export default function SessionDetail() {
   const handleUnitComplete = useCallback(
     (recordingIds: number[]) => {
       if (!session || recordingIds.length === 0) return;
+      generateAbortRef.current?.abort();
+      const controller = new AbortController();
+      generateAbortRef.current = controller;
       setGenerating(true);
       feedbackApi
-        .generate({ sessionId: session.id, recordingIds })
+        .generate({ sessionId: session.id, recordingIds }, controller.signal)
         .then(setFeedback)
-        .catch((err: unknown) => notifyApiError(err, '피드백 생성에 실패했습니다.'))
-        .finally(() => setGenerating(false));
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === 'AbortError') return;
+          notifyApiError(err, '피드백 생성에 실패했습니다.');
+        })
+        .finally(() => {
+          if (generateAbortRef.current === controller) {
+            generateAbortRef.current = null;
+            setGenerating(false);
+          }
+        });
     },
     [session]
   );
+
+  // 컴포넌트 unmount 시 진행 중인 generate 요청 차단.
+  useEffect(() => () => generateAbortRef.current?.abort(), []);
 
   const openTitleDialog = () => {
     if (!session) return;
@@ -169,10 +223,17 @@ export default function SessionDetail() {
     }
   };
 
-  const handleEndLearning = async () => {
-    const ok = await confirm({ title: '학습 종료', description: '학습을 끝내시겠습니까?', confirmLabel: '끝내기' });
+  const handleEndLearning = useCallback(async () => {
+    const ok = await confirm({
+      title: '학습 종료',
+      description: '진행한 내용이 저장되지 않을 수 있습니다. 학습을 끝내시겠습니까?',
+      confirmLabel: '끝내기',
+    });
     if (ok) navigate(paths.customLearning);
-  };
+  }, [confirm, navigate]);
+  // 학습이 진행 중일 때만 안전망. 대본 편집 / 종합 피드백 단계에서는 풀어 준다.
+  const learningInProgress = !editingScript && sentences.length > 0 && feedback === null && !generating;
+  useLearningSafeguards({ dirty: learningInProgress, onAttemptLeave: handleEndLearning });
 
   if (!session) {
     return <div className="min-h-screen flex items-center justify-center text-gray-500">불러오는 중...</div>;
@@ -262,14 +323,21 @@ export default function SessionDetail() {
                 </div>
               </BotBubble>
 
-              <LearningChatFlow
-                key={chatKey}
-                prompts={prompts}
-                upload={upload}
-                onUnitComplete={handleUnitComplete}
-                disabled={generating || feedback !== null}
-                advanceLabel="다음 문장으로"
-              />
+              {resumeFromIndex !== null && (
+                <LearningChatFlow
+                  key={chatKey}
+                  prompts={prompts}
+                  upload={upload}
+                  onUnitComplete={handleUnitComplete}
+                  onStepCompleted={(idx) => {
+                    if (!session) return;
+                    void progressApi.session.advance(session.id, idx).catch(() => {});
+                  }}
+                  startFromIndex={resumeFromIndex}
+                  disabled={generating || feedback !== null}
+                  advanceLabel="다음 문장으로"
+                />
+              )}
 
               {generating && (
                 <BotBubble>

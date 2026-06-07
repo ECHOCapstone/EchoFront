@@ -9,7 +9,7 @@
 //     - 마지막 챕터면: 트랙 완주 모달 노출 후 트랙 상세로 복귀
 //   단일 모드(트랙 컨텍스트 없음)일 때는 FeedbackFlow 기본 동작(=랭킹 이동) 을 그대로 사용한다.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
@@ -29,6 +29,7 @@ import FeedbackFlow from './FeedbackFlow';
 import LearningChatFlow, { type LearningPrompt } from './learning/LearningChatFlow';
 import {
   feedbackApi,
+  progressApi,
   recordingsApi,
   scriptsApi,
   tracksApi,
@@ -36,6 +37,7 @@ import {
   type LearningStep,
 } from '../api';
 import { useApiResource } from '../hooks/useApiResource';
+import { useLearningSafeguards } from '../hooks/useLearningSafeguards';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 import { markChapterComplete } from '../lib/trackProgress';
@@ -85,6 +87,8 @@ export default function PronunciationPractice() {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [generating, setGenerating] = useState(false);
   const [trackCompleteOpen, setTrackCompleteOpen] = useState(false);
+  // 진행 중인 종합 피드백 생성 요청을 추적해 컴포넌트 unmount 시 fetch 를 끊는다 — 메모리 누수 / 잔여 setState 차단.
+  const generateAbortRef = useRef<AbortController | null>(null);
 
   // scriptId 가 비어 있거나 잘못된 경우 트랙 목록(트랙 모드일 땐 트랙 상세) 으로 되돌린다.
   useEffect(() => {
@@ -92,6 +96,44 @@ export default function PronunciationPractice() {
       navigate(trackContext ? paths.trackOverview(trackContext.trackId) : paths.tracks, { replace: true });
     }
   }, [scriptId, trackContext, navigate]);
+
+  // 진입 시 진행 상태를 백엔드에서 로드한다. exists=true 이면 "이어서 / 처음부터" 를 사용자에게 묻는다.
+  // null = 미해결 (로딩 중 / 처음 진입 / 사용자가 처음부터 선택). 숫자면 그 인덱스 + 1 부터 학습 재개.
+  const [resumeFromIndex, setResumeFromIndex] = useState<number | null>(0);
+  useEffect(() => {
+    if (scriptId === null) return;
+    setResumeFromIndex(null);
+    let cancelled = false;
+    progressApi.chapter
+      .get(scriptId)
+      .then(async (progress) => {
+        if (cancelled) return;
+        if (!progress.exists || progress.lastCompletedIndex < 0) {
+          setResumeFromIndex(0);
+          return;
+        }
+        const proceed = await confirm({
+          title: '이어서 학습',
+          description: '이전 진행이 남아 있습니다. 이어서 학습하시겠습니까?',
+          confirmLabel: '이어서',
+          cancelLabel: '처음부터',
+        });
+        if (cancelled) return;
+        if (proceed) {
+          setResumeFromIndex(progress.lastCompletedIndex + 1);
+        } else {
+          await progressApi.chapter.reset(scriptId).catch(() => {});
+          if (!cancelled) setResumeFromIndex(0);
+        }
+      })
+      .catch(() => {
+        // 진행 상태 조회 실패는 학습을 막지 않는다 — 처음부터 시작 가정.
+        if (!cancelled) setResumeFromIndex(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scriptId, confirm]);
 
   // 트랙 모드의 "다음 챕터로" 는 같은 라우트의 searchParams 만 바꾸므로 컴포넌트가 unmount 되지 않는다.
   // scriptId 가 바뀌면 단위 학습 로컬 상태를 명시적으로 초기화해 이전 챕터의 피드백/모달이 새 챕터에 잔류하지 않게 한다.
@@ -140,26 +182,49 @@ export default function PronunciationPractice() {
     [script]
   );
 
-  // 마지막 RECORD 가 끝났을 때 종합 피드백 생성 진입.
+  // 마지막 RECORD 가 끝났을 때 종합 피드백 생성 진입. AbortController 로 진행 중 요청을 추적해
+  // 컴포넌트 unmount 시 fetch 를 끊는다.
   const handleUnitComplete = useCallback(
     (recordingIds: number[]) => {
       if (!script || recordingIds.length === 0) return;
+      generateAbortRef.current?.abort();
+      const controller = new AbortController();
+      generateAbortRef.current = controller;
       setGenerating(true);
       feedbackApi
-        .generate({ scriptId: script.id, recordingIds })
+        .generate({ scriptId: script.id, recordingIds }, controller.signal)
         .then(setFeedback)
-        .catch((err: unknown) => notifyApiError(err, '피드백 생성에 실패했습니다.'))
-        .finally(() => setGenerating(false));
+        .catch((err: unknown) => {
+          // 정상 abort 는 사용자에게 알리지 않는다 — 컴포넌트 이탈이 명시적 행동이므로 토스트가 거슬린다.
+          if (err instanceof DOMException && err.name === 'AbortError') return;
+          notifyApiError(err, '피드백 생성에 실패했습니다.');
+        })
+        .finally(() => {
+          if (generateAbortRef.current === controller) {
+            generateAbortRef.current = null;
+            setGenerating(false);
+          }
+        });
     },
     [script]
   );
 
+  // 컴포넌트 unmount 시 진행 중인 generate 요청을 일괄 차단한다.
+  useEffect(() => () => generateAbortRef.current?.abort(), []);
+
   // 학습 도중 "학습 끝내기" 버튼이 눌렸을 때 어디로 빠져나갈지. 트랙 모드면 트랙 상세, 아니면 트랙 목록.
   const exitDestination = trackContext ? paths.trackOverview(trackContext.trackId) : paths.tracks;
-  const handleEndLearning = async () => {
-    const ok = await confirm({ title: '학습 종료', description: '학습을 끝내시겠습니까?', confirmLabel: '끝내기' });
+  // 학습이 실제로 진행 중이면 새로고침 / 뒤로가기에 안전망을 건다. 종합 피드백 단계는 학습 자체가 끝났으므로 풀어 준다.
+  const learningInProgress = feedback === null && !generating;
+  const handleEndLearning = useCallback(async () => {
+    const ok = await confirm({
+      title: '학습 종료',
+      description: '진행한 내용이 저장되지 않을 수 있습니다. 학습을 끝내시겠습니까?',
+      confirmLabel: '끝내기',
+    });
     if (ok) navigate(exitDestination);
-  };
+  }, [confirm, navigate, exitDestination]);
+  useLearningSafeguards({ dirty: learningInProgress, onAttemptLeave: handleEndLearning });
 
   // 트랙 모드에서 다음 챕터/완주 처리. 단일 모드일 때는 undefined 를 반환하여
   // FeedbackFlow 기본 동작(=랭킹 이동) 이 그대로 적용된다.
@@ -239,14 +304,21 @@ export default function PronunciationPractice() {
         </div>
 
         <div className="space-y-4">
-          <LearningChatFlow
-            key={script.id}
-            prompts={prompts}
-            upload={upload}
-            onUnitComplete={handleUnitComplete}
-            disabled={generating || feedback !== null}
-            advanceLabel="다음 단계로"
-          />
+          {resumeFromIndex !== null && (
+            <LearningChatFlow
+              key={script.id}
+              prompts={prompts}
+              upload={upload}
+              onUnitComplete={handleUnitComplete}
+              onStepCompleted={(idx) => {
+                // 진행 상태 갱신은 학습 흐름과 무관한 보조 신호 — 실패해도 사용자에게 알리지 않는다.
+                void progressApi.chapter.advance(script.id, idx).catch(() => {});
+              }}
+              startFromIndex={resumeFromIndex}
+              disabled={generating || feedback !== null}
+              advanceLabel="다음 단계로"
+            />
+          )}
           {generating && (
             <BotBubble>
               <p className="text-sm text-gray-500">종합 피드백을 생성하는 중...</p>

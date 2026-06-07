@@ -7,6 +7,8 @@ export { feedbackApi } from './feedback';
 export { statsApi } from './stats';
 export { rankingApi } from './ranking';
 export { translationsApi } from './translations';
+export { progressApi } from './progress';
+export type { Progress } from './progress';
 export { ttsApi } from './tts';
 export { phonemesApi } from './phonemes';
 export {

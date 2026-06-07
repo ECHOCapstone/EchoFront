@@ -37,12 +37,18 @@ interface LearningChatFlowProps {
   upload: (audio: Blob, prompt: LearningPrompt) => Promise<RecordingResult>;
   // 마지막 RECORD 까지 끝났을 때 한 번 호출된다. recordingIds 는 prompt 별 가장 마지막 시도의 id 만 모은 것.
   onUnitComplete: (recordingIds: number[]) => void;
+  // 매 prompt 완료 (다음 단계로 이동) 시 호출되는 콜백. 부모가 진행 상태를 백엔드에 저장하는 데 사용한다.
+  // index 는 방금 완료한 prompt 의 0-based 위치 (prompts 배열 기준). 없으면 호출되지 않는다.
+  onStepCompleted?: (completedPromptIndex: number) => void;
   // 부모가 종합 피드백 생성 등 후속 흐름에 들어가 있을 때 액션 버튼을 잠근다.
   disabled?: boolean;
   // "다음으로" 버튼 라벨. 챕터/세션 화면이 다른 명사를 쓰므로 외부 주입.
   advanceLabel?: string;
   // 마지막 prompt 일 때의 라벨.
   finalAdvanceLabel?: string;
+  // 이어서 학습 시 시작할 prompt 의 0-based 인덱스. 미지정 시 처음(0)부터 시작한다.
+  // 음수 / 범위 초과 값은 무시되어 안전하게 0 으로 정규화된다.
+  startFromIndex?: number;
 }
 
 // 채팅 흐름의 한 항목. 봇 안내(bot-prompt) · 사용자 녹음 표시(user-record) · 피드백(bot-feedback) 셋 중 하나다.
@@ -56,15 +62,17 @@ export default function LearningChatFlow({
   prompts,
   upload,
   onUnitComplete,
+  onStepCompleted,
   disabled = false,
   advanceLabel = '다음으로',
   finalAdvanceLabel = '학습 마무리',
+  startFromIndex = 0,
 }: LearningChatFlowProps) {
   const recorder = useRecorder();
   const tts = useTtsPlayer();
 
   // prompts 가 바뀌면 부모가 key 로 리마운트한다는 가정 아래, 초기값은 한 번만 계산한다.
-  const initial = useMemo(() => buildInitial(prompts), [prompts]);
+  const initial = useMemo(() => buildInitial(prompts, startFromIndex), [prompts, startFromIndex]);
   const [chat, setChat] = useState<ChatItem[]>(initial.items);
   const [promptIndex, setPromptIndex] = useState(initial.cursor);
   const [latestRecordingByPromptId, setLatestRecordingByPromptId] = useState<Record<number, number>>({});
@@ -177,6 +185,12 @@ export default function LearningChatFlow({
 
   const handleAdvance = () => {
     if (doneSignaled) return;
+    // 방금 사용자가 "다음으로" 를 눌렀다는 건 promptIndex 위치의 prompt 를 완료했다는 의미.
+    // 부모가 백엔드 진행 상태를 갱신할 수 있게 인덱스를 통보한다 (실패해도 학습 흐름은 막지 않는다).
+    const completedIndex = promptIndex;
+    if (completedIndex >= 0 && completedIndex < prompts.length) {
+      onStepCompleted?.(completedIndex);
+    }
     let cursor = promptIndex + 1;
     const next: ChatItem[] = [];
     let foundRecord = false;
@@ -265,9 +279,15 @@ export default function LearningChatFlow({
 
 // 첫 RECORD 가 등장할 때까지의 INTRO 들 + 그 RECORD 까지를 한 묶음으로 보여준다.
 // 모두 INTRO 라면 전체를 한 번에 보여주고 cursor 는 끝으로 이동한다.
-function buildInitial(prompts: LearningPrompt[]): { items: ChatItem[]; cursor: number } {
+// startFromIndex 가 0 보다 크면 그 위치 직전까지의 prompt 들은 건너뛰고, startFromIndex 부터 같은
+// "다음 RECORD 까지" 묶음을 만든다 — "이어서" 흐름에서 이미 끝낸 step 을 다시 보여주지 않는다.
+function buildInitial(
+  prompts: LearningPrompt[],
+  startFromIndex: number,
+): { items: ChatItem[]; cursor: number } {
   const items: ChatItem[] = [];
-  let cursor = 0;
+  const safeStart = Math.max(0, Math.min(startFromIndex, prompts.length));
+  let cursor = safeStart;
   while (cursor < prompts.length) {
     const p = prompts[cursor];
     items.push({ kind: 'bot-prompt', key: `p-${p.id}-${cursor}`, prompt: p });
