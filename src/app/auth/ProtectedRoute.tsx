@@ -10,7 +10,11 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation();
 
   if (state.status === 'loading') {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="inline-block w-10 h-10 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+      </div>
+    );
   }
   if (state.status === 'unauthenticated') {
     return <Navigate to={paths.login} replace state={{ from: location.pathname }} />;

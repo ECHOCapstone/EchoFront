@@ -71,12 +71,12 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
     !micModalDismissed &&
     (recorder.status === 'denied' || recorder.status === 'unsupported');
 
-  const handleStart = async () => {
-    if (busy) return;
+  const handleStart = async (): Promise<boolean> => {
+    if (busy) return false;
     // 다른 카드가 이미 녹음 중이면 즉시 차단 — 동시 getUserMedia 호출 충돌 / 마이크 경쟁 방지.
     if (!lock.acquire(lockKey)) {
       toast.info('다른 카드가 녹음 중이에요. 끝나면 다시 시도해 주세요.');
-      return;
+      return false;
     }
     // start 가 false 를 돌려준 경우 (권한 거부 / 미지원 / 더블 클릭) lock 이 그대로 남으면 다른 카드가
     // 영영 막힌다. 결과를 직접 보고 즉시 푼다 — closure 의 status 는 stale 이라 신뢰할 수 없다.
@@ -84,6 +84,7 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
     if (!started) {
       lock.release(lockKey);
     }
+    return started;
   };
 
   const handleStop = async () => {

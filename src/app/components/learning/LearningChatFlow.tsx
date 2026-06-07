@@ -119,9 +119,9 @@ export default function LearningChatFlow({
     lastItem.kind === 'bot-prompt' &&
     lastItem.prompt.id === currentPrompt.id;
 
-  const handleStartRecording = async () => {
-    if (busyStep) return;
-    await recorder.start();
+  const handleStartRecording = async (): Promise<boolean> => {
+    if (busyStep) return false;
+    return await recorder.start();
   };
 
   const handleStopRecording = async () => {

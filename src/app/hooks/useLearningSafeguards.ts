@@ -3,7 +3,7 @@
 //   - 라우터 내 이동 / 뒤로가기: history.pushState 한 번을 막아 popstate 시 사용자에게 확인을 받는다.
 // "dirty" 가 true 인 경우에만 안전망이 동작하므로, 호출 측은 학습이 실제로 진행 중인 동안만 true 로 둔다.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface UseLearningSafeguardsOptions {
   // true 이면 새로고침 / 뒤로가기를 막고 사용자에게 확인을 받는다. 학습이 끝나면 false 로 두어 차단을 푼다.
@@ -21,6 +21,10 @@ function beforeUnloadGuard(event: BeforeUnloadEvent) {
 }
 
 export function useLearningSafeguards({ dirty, onAttemptLeave }: UseLearningSafeguardsOptions): void {
+  // confirm 다이얼로그가 떠 있는 동안 또 popstate 가 발생하면 두 번째 다이얼로그가 중첩된다.
+  // 한 번에 한 확인 흐름만 진행되도록 in-flight 플래그를 둔다.
+  const inFlightRef = useRef(false);
+
   useEffect(() => {
     if (!dirty) return;
     window.addEventListener('beforeunload', beforeUnloadGuard);
@@ -35,10 +39,14 @@ export function useLearningSafeguards({ dirty, onAttemptLeave }: UseLearningSafe
     window.history.pushState({ __learningGuard: true }, '', window.location.href);
 
     const handler = () => {
-      // 사용자 확인 흐름을 호출 측에 위임한다. async 라도 await 하지 않는다 — popstate 는 이미 일어났고
-      // 더미 state 는 사라진 상태라 즉시 다시 한 칸 쌓아 안전망을 유지한다.
+      // 이미 확인 흐름이 진행 중이면 더미 state 만 다시 쌓고 호출을 무시 — 다이얼로그 중첩을 차단한다.
       window.history.pushState({ __learningGuard: true }, '', window.location.href);
-      void onAttemptLeave();
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      // async 결과를 그대로 await — 사용자가 confirm 을 끝낸 뒤에야 플래그를 다시 푼다.
+      Promise.resolve(onAttemptLeave()).finally(() => {
+        inFlightRef.current = false;
+      });
     };
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
