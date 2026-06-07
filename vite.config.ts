@@ -9,12 +9,15 @@ import type { IncomingMessage } from 'node:http'
 const DEV_PROXY_TARGET = process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8080'
 
 // Vite 의 Host 헤더 검증을 통과시킬 호스트 목록.
-//   - VITE_DEV_ALLOWED_HOSTS = "*"            → 전체 허용 (Cloudflare Tunnel 등 시연용)
-//   - VITE_DEV_ALLOWED_HOSTS = "a.dev,b.dev"  → 콤마로 끊어 명시
-//   - 미설정                                  → 기본 localhost 두 형태만 통과 (운영 안전 기본값)
+//   - VITE_DEV_ALLOWED_HOSTS = "*"            → 전체 허용 (운영 노출 시 사용 금지)
+//   - VITE_DEV_ALLOWED_HOSTS = "a.dev,b.dev"  → 콤마로 끊어 명시 (선두 점 = 서브도메인 와일드카드)
+//   - 미설정                                  → localhost + Cloudflare Tunnel 시연 도메인까지 통과
+// 선두 점(.trycloudflare.com) 은 Vite 의 서브도메인 와일드카드 문법이라 매 세션마다 바뀌는
+// 트라이클라우드플레어 호스트네임을 별도 설정 없이 받아 준다.
 function resolveAllowedHosts(): true | string[] {
+  const defaults = ['localhost', '127.0.0.1', '.trycloudflare.com']
   const raw = process.env.VITE_DEV_ALLOWED_HOSTS
-  if (!raw || raw.trim() === '') return ['localhost', '127.0.0.1']
+  if (!raw || raw.trim() === '') return defaults
   if (raw.trim() === '*') return true
   return raw
     .split(',')
