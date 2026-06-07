@@ -25,6 +25,7 @@ import {
   recordingsApi,
   sessionsApi,
   type Feedback,
+  type RecordingHistoryItem,
   type Session,
   type SessionSentence,
 } from '../api';
@@ -96,10 +97,15 @@ export default function SessionDetail() {
   const chatKey = useMemo(() => prompts.map((p) => p.id).join(','), [prompts]);
 
   // 진입 시 진행 상태 로드. 챕터 흐름과 같은 정책 — exists 면 confirm, null 은 미해결 (UI 가림).
+  // priorHistory 는 "이어서" 진입 시 이전 sentence 들의 압축 데이터.
   const [resumeFromIndex, setResumeFromIndex] = useState<number | null>(0);
+  const [priorHistory, setPriorHistory] = useState<Map<number, RecordingHistoryItem>>(new Map());
+  const [historicalPassThreshold, setHistoricalPassThreshold] = useState<number | undefined>(undefined);
   useEffect(() => {
     if (sessionId === null) return;
     setResumeFromIndex(null);
+    setPriorHistory(new Map());
+    setHistoricalPassThreshold(undefined);
     let cancelled = false;
     progressApi.session
       .get(sessionId)
@@ -117,7 +123,19 @@ export default function SessionDetail() {
         });
         if (cancelled) return;
         if (proceed) {
-          setResumeFromIndex(progress.lastCompletedIndex + 1);
+          try {
+            const history = await recordingsApi.historyForSession(sessionId);
+            if (cancelled) return;
+            const map = new Map<number, RecordingHistoryItem>();
+            for (const item of history.items) {
+              map.set(item.stepId, item);
+            }
+            setPriorHistory(map);
+            setHistoricalPassThreshold(history.passThreshold);
+          } catch {
+            // 빈 history 로 진입 — 학습 흐름은 그대로 이어진다.
+          }
+          if (!cancelled) setResumeFromIndex(progress.lastCompletedIndex + 1);
         } else {
           await progressApi.session.reset(sessionId).catch(() => {});
           if (!cancelled) setResumeFromIndex(0);
@@ -332,6 +350,8 @@ export default function SessionDetail() {
                     void progressApi.session.advance(session.id, idx).catch(() => {});
                   }}
                   startFromIndex={resumeFromIndex}
+                  priorHistory={priorHistory}
+                  historicalPassThreshold={historicalPassThreshold}
                   disabled={generating || feedback !== null}
                   advanceLabel="다음 문장으로"
                 />

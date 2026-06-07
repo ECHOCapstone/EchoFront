@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { RecordingResult } from './types';
+import type { RecordingHistory, RecordingResult } from './types';
 
 // 한 번의 녹음 업로드 입력. scriptId / sessionId 중 정확히 하나가 필수다.
 //   - 추천 학습: { scriptId, stepId, audio } — stepId 는 LearningStep.id
@@ -25,4 +25,9 @@ export const recordingsApi = {
     if (input.sessionSentenceId != null) form.append('sessionSentenceId', String(input.sessionSentenceId));
     return apiClient.post<RecordingResult>('/api/recordings', { formData: form });
   },
+  // "이어서 학습" 진입 시 사용자의 이전 시도 압축 데이터를 가져온다. step / sentence 별 가장 최근 한 건씩.
+  historyForScript: (scriptId: number) =>
+    apiClient.get<RecordingHistory>(`/api/scripts/${scriptId}/recordings/history`),
+  historyForSession: (sessionId: number) =>
+    apiClient.get<RecordingHistory>(`/api/sessions/${sessionId}/recordings/history`),
 };
