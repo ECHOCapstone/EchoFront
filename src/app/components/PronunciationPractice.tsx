@@ -29,6 +29,7 @@ import FeedbackFlow from './FeedbackFlow';
 import LearningChatFlow, { type LearningPrompt } from './learning/LearningChatFlow';
 import {
   feedbackApi,
+  progressApi,
   recordingsApi,
   scriptsApi,
   tracksApi,
@@ -95,6 +96,44 @@ export default function PronunciationPractice() {
       navigate(trackContext ? paths.trackOverview(trackContext.trackId) : paths.tracks, { replace: true });
     }
   }, [scriptId, trackContext, navigate]);
+
+  // 진입 시 진행 상태를 백엔드에서 로드한다. exists=true 이면 "이어서 / 처음부터" 를 사용자에게 묻는다.
+  // null = 미해결 (로딩 중 / 처음 진입 / 사용자가 처음부터 선택). 숫자면 그 인덱스 + 1 부터 학습 재개.
+  const [resumeFromIndex, setResumeFromIndex] = useState<number | null>(0);
+  useEffect(() => {
+    if (scriptId === null) return;
+    setResumeFromIndex(null);
+    let cancelled = false;
+    progressApi.chapter
+      .get(scriptId)
+      .then(async (progress) => {
+        if (cancelled) return;
+        if (!progress.exists || progress.lastCompletedIndex < 0) {
+          setResumeFromIndex(0);
+          return;
+        }
+        const proceed = await confirm({
+          title: '이어서 학습',
+          description: '이전 진행이 남아 있습니다. 이어서 학습하시겠습니까?',
+          confirmLabel: '이어서',
+          cancelLabel: '처음부터',
+        });
+        if (cancelled) return;
+        if (proceed) {
+          setResumeFromIndex(progress.lastCompletedIndex + 1);
+        } else {
+          await progressApi.chapter.reset(scriptId).catch(() => {});
+          if (!cancelled) setResumeFromIndex(0);
+        }
+      })
+      .catch(() => {
+        // 진행 상태 조회 실패는 학습을 막지 않는다 — 처음부터 시작 가정.
+        if (!cancelled) setResumeFromIndex(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scriptId, confirm]);
 
   // 트랙 모드의 "다음 챕터로" 는 같은 라우트의 searchParams 만 바꾸므로 컴포넌트가 unmount 되지 않는다.
   // scriptId 가 바뀌면 단위 학습 로컬 상태를 명시적으로 초기화해 이전 챕터의 피드백/모달이 새 챕터에 잔류하지 않게 한다.
@@ -265,14 +304,21 @@ export default function PronunciationPractice() {
         </div>
 
         <div className="space-y-4">
-          <LearningChatFlow
-            key={script.id}
-            prompts={prompts}
-            upload={upload}
-            onUnitComplete={handleUnitComplete}
-            disabled={generating || feedback !== null}
-            advanceLabel="다음 단계로"
-          />
+          {resumeFromIndex !== null && (
+            <LearningChatFlow
+              key={script.id}
+              prompts={prompts}
+              upload={upload}
+              onUnitComplete={handleUnitComplete}
+              onStepCompleted={(idx) => {
+                // 진행 상태 갱신은 학습 흐름과 무관한 보조 신호 — 실패해도 사용자에게 알리지 않는다.
+                void progressApi.chapter.advance(script.id, idx).catch(() => {});
+              }}
+              startFromIndex={resumeFromIndex}
+              disabled={generating || feedback !== null}
+              advanceLabel="다음 단계로"
+            />
+          )}
           {generating && (
             <BotBubble>
               <p className="text-sm text-gray-500">종합 피드백을 생성하는 중...</p>

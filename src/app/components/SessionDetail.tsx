@@ -21,6 +21,7 @@ import LearningChatFlow, { type LearningPrompt } from './learning/LearningChatFl
 import TextEditDialog from './TextEditDialog';
 import {
   feedbackApi,
+  progressApi,
   recordingsApi,
   sessionsApi,
   type Feedback,
@@ -93,6 +94,42 @@ export default function SessionDetail() {
   );
   // sentences 가 바뀌면 LearningChatFlow 를 리마운트해 채팅을 초기화한다.
   const chatKey = useMemo(() => prompts.map((p) => p.id).join(','), [prompts]);
+
+  // 진입 시 진행 상태 로드. 챕터 흐름과 같은 정책 — exists 면 confirm, null 은 미해결 (UI 가림).
+  const [resumeFromIndex, setResumeFromIndex] = useState<number | null>(0);
+  useEffect(() => {
+    if (sessionId === null) return;
+    setResumeFromIndex(null);
+    let cancelled = false;
+    progressApi.session
+      .get(sessionId)
+      .then(async (progress) => {
+        if (cancelled) return;
+        if (!progress.exists || progress.lastCompletedIndex < 0) {
+          setResumeFromIndex(0);
+          return;
+        }
+        const proceed = await confirm({
+          title: '이어서 학습',
+          description: '이전 진행이 남아 있습니다. 이어서 학습하시겠습니까?',
+          confirmLabel: '이어서',
+          cancelLabel: '처음부터',
+        });
+        if (cancelled) return;
+        if (proceed) {
+          setResumeFromIndex(progress.lastCompletedIndex + 1);
+        } else {
+          await progressApi.session.reset(sessionId).catch(() => {});
+          if (!cancelled) setResumeFromIndex(0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setResumeFromIndex(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, confirm]);
 
   const upload = useCallback(
     async (audio: Blob, prompt: LearningPrompt) => {
@@ -286,14 +323,21 @@ export default function SessionDetail() {
                 </div>
               </BotBubble>
 
-              <LearningChatFlow
-                key={chatKey}
-                prompts={prompts}
-                upload={upload}
-                onUnitComplete={handleUnitComplete}
-                disabled={generating || feedback !== null}
-                advanceLabel="다음 문장으로"
-              />
+              {resumeFromIndex !== null && (
+                <LearningChatFlow
+                  key={chatKey}
+                  prompts={prompts}
+                  upload={upload}
+                  onUnitComplete={handleUnitComplete}
+                  onStepCompleted={(idx) => {
+                    if (!session) return;
+                    void progressApi.session.advance(session.id, idx).catch(() => {});
+                  }}
+                  startFromIndex={resumeFromIndex}
+                  disabled={generating || feedback !== null}
+                  advanceLabel="다음 문장으로"
+                />
+              )}
 
               {generating && (
                 <BotBubble>
