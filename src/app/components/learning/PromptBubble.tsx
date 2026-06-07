@@ -67,7 +67,7 @@ export default function PromptBubble({
             busy={busy}
             onStart={onStartRecording}
             onStop={onStopRecording}
-            busyLabel="업로드 중..."
+            busyLabel="발음 분석 중..."
           />
         </>
       )}

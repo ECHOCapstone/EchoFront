@@ -4,8 +4,8 @@
 // 색 규칙
 //   - 단어 줄: targetText 의 영어 단어를 0-based 로 셀 때 그 인덱스가 wrongWords 의 index 와
 //     일치하면 빨강. word 도 같이 비교해 LLM 이 인덱스를 헷갈렸을 때 잘못 색칠하지 않는다.
-//   - 정답 음소 줄: substitution / deletion 인 canonicalIndex = 빨강.
-//   - 당신 음소 줄: substitution / insertion 으로 등장한 perceived 토큰 = 빨강 (중복 카운트 처리).
+//   - 정답 음소 줄: SUBSTITUTION / DELETION 인 canonicalIndex = 빨강.
+//   - 당신 음소 줄: SUBSTITUTION / INSERTION 으로 등장한 perceived 토큰 = 빨강 (중복 카운트 처리).
 
 import type { PhonemeError, WrongWord } from '../api';
 
@@ -32,12 +32,12 @@ export default function PhonemeAlignment({
   const wrongPerceivedTokens = new Map<string, number>();
   for (const e of errors) {
     if (!e.op) continue;
-    if (e.op === 'substitution' || e.op === 'deletion') {
+    if (e.op === 'SUBSTITUTION' || e.op === 'DELETION') {
       if (e.canonicalIndex !== null && e.canonicalIndex !== undefined) {
         wrongCanonicalIdx.add(e.canonicalIndex);
       }
     }
-    if ((e.op === 'substitution' || e.op === 'insertion') && e.perceived) {
+    if ((e.op === 'SUBSTITUTION' || e.op === 'INSERTION') && e.perceived) {
       wrongPerceivedTokens.set(e.perceived, (wrongPerceivedTokens.get(e.perceived) ?? 0) + 1);
     }
   }

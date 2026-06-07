@@ -30,6 +30,11 @@ const KOREAN_ERROR_MESSAGES: Record<string, string> = {
   AUDIO_DECODE_FAILED: '녹음 파일을 읽을 수 없습니다. 다시 녹음해 주세요.',
   MODEL_SERVER_ERROR: '발음 분석 서버에서 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
   MODEL_SERVER_UNAVAILABLE: '발음 분석 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  // canonical / 채점이 LLM 으로 옮겨가면서 새로 생긴 실패 카테고리.
+  // 사용자에겐 "준비 중" 형태로 부드럽게 안내해 재시도를 유도한다.
+  CANONICAL_GENERATION_FAILED: '발음 분석 준비 중 문제가 있었어요. 잠시 후 다시 시도해 주세요.',
+  SCORING_GENERATION_FAILED: '발음 채점 중 문제가 있었어요. 잠시 후 다시 시도해 주세요.',
+  LLM_UNAVAILABLE: 'AI 분석 서비스에 잠시 연결할 수 없어요. 잠시 후 다시 시도해 주세요.',
   INTERNAL_ERROR: '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
 };
 

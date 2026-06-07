@@ -178,6 +178,7 @@ export default function LearningChatFlow({
               perceived: uploaded.perceived,
               canonical: uploaded.canonical,
               errors: uploaded.errors,
+              alignment: uploaded.alignment ?? [],
               wrongWords: uploaded.wrongWords,
               canonicalWords: uploaded.canonicalWords ?? [],
             },
@@ -390,8 +391,10 @@ function toHistoricalFeedbackData(
       perceived: history.perceived,
       canonical: history.canonical,
       errors: history.errors,
+      // history 응답이 신규 alignment 필드를 같이 내려주면 그대로 쓰고, 누락 시 빈 배열로 폴백.
+      alignment: history.alignment ?? [],
       wrongWords: history.wrongWords,
-      // 단어별 canonical 음소 (g2p 결과) 는 저장하지 않으므로 비워 둔다 —
+      // 단어별 canonical 음소 (LLM canonical words) 는 history 에 저장되지 않으므로 비워 둔다 —
       // FeedbackPhonemeSection 은 빈 배열을 받으면 한 줄 음소로 자연스럽게 폴백한다.
       canonicalWords: [],
     },

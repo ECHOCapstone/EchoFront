@@ -10,17 +10,20 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { BotBubble } from '../ChatBubble';
 import FeedbackPhonemeSection from '../FeedbackPhonemeSection';
-import type { CanonicalWord, PhonemeError, PhonemeTip, SpeechRate, WrongWord } from '../../api';
+import type { AlignmentOp, CanonicalWord, PhonemeError, PhonemeTip, SpeechRate, WrongWord } from '../../api';
 import { playScoreFanfare } from '../../lib/scoreFanfare';
 import { renderInlineMarkdown } from '../../lib/markdownLite';
 import { feedbackPresentation, selectWeakPhonemeTips } from './feedbackPresentation';
 
 // 음소 정렬 결과 스냅샷. 피드백 말풍선이 음소 단위 시각화를 그릴 때 쓴다.
+// alignment 는 MATCH 까지 포함한 시퀀스 전체 (LLM 출력). 시각화는 errors 만으로도 충분히 동작하지만,
+// 시퀀스 기반 표시가 필요한 자리에 같이 흘려보낼 수 있도록 스냅샷에 포함한다.
 export interface AlignmentSnapshot {
   targetText: string | null;
   perceived: string[];
   canonical: string[];
   errors: PhonemeError[];
+  alignment: AlignmentOp[];
   wrongWords: WrongWord[];
   // 단어별 canonical 음소. 음소를 단어 경계로 잘라 보여줄 때 사용. 비어 있으면 한 줄 폴백.
   canonicalWords: CanonicalWord[];

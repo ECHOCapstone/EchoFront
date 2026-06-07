@@ -59,7 +59,7 @@ export function feedbackPresentation(input: {
 export function selectWeakPhonemeTips(tips: PhonemeTip[], errors: PhonemeError[]): PhonemeTip[] {
   const wrongPhonemes = new Set(
     errors
-      .filter((e) => (e.op === 'substitution' || e.op === 'deletion') && e.canonical)
+      .filter((e) => (e.op === 'SUBSTITUTION' || e.op === 'DELETION') && e.canonical)
       .map((e) => normalizePhoneme(e.canonical as string)),
   );
   return tips.filter((t) => wrongPhonemes.has(normalizePhoneme(t.phoneme)));

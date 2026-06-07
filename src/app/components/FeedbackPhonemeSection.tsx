@@ -47,10 +47,10 @@ interface FeedbackPhonemeSectionProps {
 }
 
 // 한 음소 칸. 정답(ph) 위에 내 발음을 두 줄로 비교하기 위한 매핑 결과를 같이 들고 있다.
-//   match        — perceived === ph, 정답·내 발음 동일
-//   substitution — perceived !== ph (둘 다 존재)
-//   deletion     — perceived === null (내 발음에서 빠짐)
-// insertion 은 canonical 인덱스가 없어 위치를 못 박으므로 이 표에는 포함하지 않는다.
+//   MATCH        — perceived === ph, 정답·내 발음 동일
+//   SUBSTITUTION — perceived !== ph (둘 다 존재)
+//   DELETION     — perceived === null (내 발음에서 빠짐)
+// INSERTION 은 canonical 인덱스가 없어 위치를 못 박으므로 이 표에는 포함하지 않는다.
 type PhonemeCell = {
   ph: string;
   idx: number;
@@ -71,7 +71,7 @@ export default function FeedbackPhonemeSection({
   const [selectedPhoneme, setSelectedPhoneme] = useState<string | null>(null);
   const pointerFine = usePointerFine();
 
-  // canonicalIndex → 그 위치의 error (substitution / deletion). 정답 vs 내 발음 비교 표 빌딩의 단일 출처.
+  // canonicalIndex → 그 위치의 error (SUBSTITUTION / DELETION). 정답 vs 내 발음 비교 표 빌딩의 단일 출처.
   const errorByIdx = useMemo(() => {
     const m = new Map<number, (typeof errors)[number]>();
     for (const e of errors) {
@@ -95,8 +95,8 @@ export default function FeedbackPhonemeSection({
       phonemes: cw.phonemes.map((ph) => {
         const idx = cursor++;
         const err = errorByIdx.get(idx);
-        const isSubstitution = err?.op === 'substitution';
-        const isDeletion = err?.op === 'deletion';
+        const isSubstitution = err?.op === 'SUBSTITUTION';
+        const isDeletion = err?.op === 'DELETION';
         const perceived = isDeletion ? null : isSubstitution ? err?.perceived ?? ph : ph;
         return { ph, idx, perceived, isSubstitution, isDeletion };
       }),

@@ -85,9 +85,18 @@ export default function FeedbackFlow({
   return (
     <>
       <BotBubble>
-        <p className="text-gray-800 leading-relaxed mb-3">
-          이번 학습 정확도는 <span className={`font-bold ${accuracyColor}`}>{feedback.accuracy.toFixed(1)}점</span>이에요.
-        </p>
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <p className="text-gray-800 leading-relaxed">
+            이번 학습 정확도는 <span className={`font-bold ${accuracyColor}`}>{feedback.accuracy.toFixed(1)}점</span>이에요.
+          </p>
+          {/* AI 가 채점·분석한 결과임을 한 번 정직하게 표기. 종합 피드백 카드 1회만 노출해 시각 노이즈를 막는다. */}
+          <span
+            className="text-[10px] font-medium text-gray-500 border border-gray-300 bg-white rounded px-1.5 py-0.5 leading-none"
+            title="AI 가 발음을 분석한 결과예요. 점수는 참고용으로 활용해 주세요."
+          >
+            AI 분석
+          </span>
+        </div>
         {feedback.guidanceKr && (
           <p className="text-gray-700 leading-relaxed">
             {renderInlineMarkdown(feedback.guidanceKr)}

@@ -168,13 +168,15 @@ export type PracticeItem = {
 // 모델 서버가 분류한 발화 속도. FAST 이면 "조금 천천히" 안내 배지를 노출한다.
 export type SpeechRate = 'FAST' | 'NORMAL' | 'SLOW';
 
-// 단어별 canonical 음소 (백엔드 g2p words). 음소를 단어 경계로 잘라 보여줄 때 사용한다.
+// 단어별 canonical 음소. 백엔드가 LLM 으로 생성하므로 문맥 의존 발음 (the → DH IY 등) 도 정확히 반영된다.
+// 음소를 단어 경계로 잘라 보여줄 때 사용한다.
 export type CanonicalWord = {
   word: string;
   phonemes: string[];
 };
 
 // 한 번의 녹음 업로드 응답.
+// canonical / alignment / stepScore 는 백엔드 LLM 출력에서 도출된다 — 시각·표시 로직은 동일.
 // passed / retryRecommended 는 백엔드의 통과 임계 (app.gamification.pass-threshold) 와
 // LLM 판정을 합쳐 결정한 SSOT 값이라 프론트가 점수만 보고 다시 판단하지 않는다.
 export type RecordingResult = {
@@ -194,6 +196,8 @@ export type RecordingResult = {
   strengths: string[];
   weaknesses: string[];
   errors: PhonemeError[];
+  // LLM 정렬 결과의 시퀀스 전체. errors 와 달리 MATCH 도 포함해 음소별 색칠 / 정·오답 표시의 단일 소스로 쓴다.
+  alignment: AlignmentOp[];
   wrongWords: WrongWord[];
   phonemeTips: PhonemeTip[];
   speechRate: SpeechRate;
@@ -204,8 +208,19 @@ export type RecordingResult = {
   createdAt: string;
 };
 
+// LLM 이 보고하는 음소 실수 한 건. MATCH 는 errors 에 포함되지 않는다 — errors 는 실수 모음.
+// op 는 백엔드 enum 직렬화 결과로 UPPERCASE 로 고정된다.
 export type PhonemeError = {
-  op: string;
+  op: 'SUBSTITUTION' | 'INSERTION' | 'DELETION';
+  canonical: string | null;
+  perceived: string | null;
+  canonicalIndex: number | null;
+};
+
+// LLM 정렬 결과의 한 셀. MATCH 까지 포함한 시퀀스 전체를 그대로 노출해 음소별 색칠/표시의 단일 소스가 된다.
+// canonicalIndex 는 canonical 시퀀스에서의 0-based 위치. INSERTION 은 canonical 자리에 매핑되지 않아 null.
+export type AlignmentOp = {
+  errorType: 'MATCH' | 'SUBSTITUTION' | 'INSERTION' | 'DELETION';
   canonical: string | null;
   perceived: string | null;
   canonicalIndex: number | null;
@@ -275,6 +290,7 @@ export type ChallengeCurrent = {
 };
 
 // 한 번의 챌린지 도전 결과. isMyNewBest 가 true 면 효과음/애니메이션 트리거에 사용한다.
+// errors / alignment 는 RecordingResult 와 같은 형태 — 챌린지 결과 카드에서도 음소 정렬 시각화를 그대로 쓴다.
 export type ChallengeAttempt = {
   attemptId: number;
   score: number;
@@ -284,12 +300,8 @@ export type ChallengeAttempt = {
   attemptsLimit: number;
   perceived: string[];
   canonical: string[];
-  errors: {
-    op: string;
-    canonical: string | null;
-    perceived: string | null;
-    canonicalIndex: number | null;
-  }[];
+  errors: PhonemeError[];
+  alignment: AlignmentOp[];
 };
 
 // 챌린지 랭킹 응답.
@@ -388,7 +400,8 @@ export type BadgeInput = {
 //   stepScore         : 0~100. 분석 실패 등으로 null 가능.
 //   guidanceKr        : LLM 이 만든 한국어 가이드. 없으면 빈 문자열.
 //   perceived/canonical : 모델 음소 시퀀스. 빈 배열이면 시각화는 생략.
-//   errors / wrongWords : 저장된 오류 / 약점 단어 데이터 — FeedbackBubble 의 음소 정렬 / 단어 강조에 그대로 사용.
+//   errors / alignment / wrongWords : 저장된 오류 / 정렬 / 약점 단어 — FeedbackBubble 의 음소 정렬 / 단어 강조에 그대로 사용.
+//                                      alignment 는 MATCH 까지 포함한 시퀀스 전체.
 //   createdAt         : 시도 시각.
 export type RecordingHistoryItem = {
   recordingId: number;
@@ -398,6 +411,7 @@ export type RecordingHistoryItem = {
   perceived: string[];
   canonical: string[];
   errors: PhonemeError[];
+  alignment: AlignmentOp[];
   wrongWords: WrongWord[];
   createdAt: string;
 };
