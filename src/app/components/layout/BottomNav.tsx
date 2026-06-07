@@ -1,13 +1,13 @@
 // 모든 메인 화면에서 공유하는 하단 네비게이션 바. active 탭만 sky 색으로 강조하고
 // 그 외에는 회색 hover 처리. variant 로 노출할 탭 묶음을 결정한다.
-//   - 'main'  : 홈/통계/프로필 (메인 흐름)
-//   - 'study' : 홈/프로필 (학습 화면, 통계 진입 차단)
+//   - 'main'  : 홈/랭킹/통계/프로필 (메인 흐름) — 랭킹은 주간 발음 정확도 화면으로 바로 이동한다.
+//   - 'study' : 홈/프로필 (학습 화면, 통계·랭킹 진입 차단)
 
 import { useNavigate } from 'react-router';
-import { Home, LineChart, User } from 'lucide-react';
+import { Home, LineChart, Trophy, User } from 'lucide-react';
 import { paths } from '../../lib/paths';
 
-export type BottomNavTab = 'home' | 'stats' | 'profile';
+export type BottomNavTab = 'home' | 'ranking' | 'stats' | 'profile';
 export type BottomNavVariant = 'main' | 'study';
 
 interface BottomNavProps {
@@ -16,12 +16,13 @@ interface BottomNavProps {
 }
 
 const VARIANT_TABS: Record<BottomNavVariant, BottomNavTab[]> = {
-  main: ['home', 'stats', 'profile'],
+  main: ['home', 'ranking', 'stats', 'profile'],
   study: ['home', 'profile'],
 };
 
 const TAB_META: Record<BottomNavTab, { label: string; path: string; Icon: typeof Home }> = {
   home: { label: '홈', path: paths.main, Icon: Home },
+  ranking: { label: '랭킹', path: paths.ranking, Icon: Trophy },
   stats: { label: '통계', path: paths.stats, Icon: LineChart },
   profile: { label: '프로필', path: paths.profile, Icon: User },
 };

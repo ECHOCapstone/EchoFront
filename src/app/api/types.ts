@@ -107,6 +107,9 @@ export type LearningStep = {
   kind: StepKind;
   prompt: string;
   targetText: string | null;
+  // targetText 에 대응하는 한국어 자막. 백엔드 ScriptService 가 TranslationService 로 미리 채워 보내며,
+  // 번역이 없거나 INTRO 단계처럼 발화 텍스트가 없으면 null.
+  koreanTranslation: string | null;
 };
 
 export type ScriptDetail = {
@@ -126,6 +129,9 @@ export type SessionSentence = {
   id: number;
   sentenceIndex: number;
   text: string;
+  // text 에 대응하는 한국어 자막. 백엔드 SessionService 가 get/patch 응답에 함께 실어 보낸다.
+  // 번역이 없으면 null.
+  koreanTranslation: string | null;
 };
 
 export type Session = {
@@ -253,12 +259,32 @@ export type Stats = {
   badges: { id: string; name: string; achieved: boolean }[];
 };
 
+// 주간 발음 정확도 랭킹 응답. 백엔드 RankingResponse 와 1:1.
+//   period            : 사용자에게 보일 기간 표기 ("5/30 ~ 6/5").
+//   windowDays        : 집계에 쓰인 일수 (헤더 부제용).
+//   minActivityCount  : 랭킹 진입 임계 — 본인이 미통과면 안내 문구 ("X건 더 학습") 조립에 사용.
+//   totalRanked       : 임계를 통과한 전체 사용자 수.
+//   myRank            : 본인 순위 — 0 이면 unranked (활동 없음 또는 임계 미통과).
+//   myAccuracy        : 본인 평균 정확도 — 임계 미통과여도 진척도는 노출된다.
+//   myActivityCount   : 본인의 윈도 내 완료 건수.
+//   myEntryShown      : entries 안에 본인이 포함됐는지. false 면 별도 줄로 본인 행을 노출한다.
+//   entries           : Top N 행. activityCount 로 "X 회 학습" 부제를 함께 보여준다.
 export type Ranking = {
-  unitTitle: string;
+  period: string;
+  windowDays: number;
+  minActivityCount: number;
+  totalRanked: number;
   myRank: number;
-  totalUsers: number;
   myAccuracy: number;
-  entries: { rank: number; nickname: string; accuracy: number; isMe: boolean }[];
+  myActivityCount: number;
+  myEntryShown: boolean;
+  entries: {
+    rank: number;
+    nickname: string;
+    accuracy: number;
+    activityCount: number;
+    isMe: boolean;
+  }[];
 };
 
 // 학습 트랙 목록 화면에 노출되는 메타. chapterCount 로 분량을 가늠한다.
@@ -305,6 +331,17 @@ export type BadgeInput = {
   name: string;
   condition: string;
   threshold: number;
+};
+
+// 영어 → 한국어 번역 응답 한 건. target 이 빈 문자열이면 외부 호출이 실패했거나 provider 가 noop 으로 폴백된 상태.
+export type TranslationItem = {
+  source: string;
+  target: string;
+};
+
+// 번역 배치 응답. items 는 요청 texts 와 같은 길이·같은 순서다.
+export type TranslationBatchResponse = {
+  items: TranslationItem[];
 };
 
 // 어드민 약관 관리에서 받아오는 한 종류 약관 본문 + override 여부.

@@ -57,6 +57,7 @@ function readNonNegativeInt(value: string | null): number | null {
 }
 
 // LearningStep 도메인 객체를 LearningChatFlow 가 받는 일반 prompt 로 정규화한다.
+// 백엔드가 미리 채워 보낸 koreanTranslation 을 그대로 전달해 첫 렌더부터 자막이 노출되게 한다.
 function toLearningPrompt(step: LearningStep): LearningPrompt {
   return {
     id: step.id,
@@ -64,6 +65,7 @@ function toLearningPrompt(step: LearningStep): LearningPrompt {
     target: step.targetText ?? null,
     canRecord: step.kind === 'RECORD',
     ttsText: step.kind === 'RECORD' ? step.targetText : null,
+    koreanTranslation: step.koreanTranslation ?? null,
   };
 }
 

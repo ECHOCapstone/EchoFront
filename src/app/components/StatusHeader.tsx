@@ -22,14 +22,14 @@ export default function StatusHeader({ streak, exp }: StatusHeaderProps) {
   const goStats = () => navigate(paths.stats);
 
   return (
-    <div className="flex items-center gap-2 mb-4 flex-wrap">
+    <div className="flex items-center gap-1.5 mb-4 flex-wrap">
       {/* 레벨 배지 — 맨 왼쪽 끝에 고정(mr-auto 로 이후 항목을 오른쪽으로 민다) */}
       <button
         onClick={goStats}
-        className="mr-auto flex items-center gap-2 px-3 py-2 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
+        className="mr-auto flex items-center gap-1.5 px-2.5 py-1.5 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
         title={`레벨 ${lv.level} · ${lv.current}/${lv.required} EXP`}
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold text-white">
+        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold text-white">
           {lv.level}
         </span>
         <span className="flex flex-col items-start">
@@ -45,20 +45,20 @@ export default function StatusHeader({ streak, exp }: StatusHeaderProps) {
 
       <button
         onClick={goStats}
-        className="flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 rounded-full transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-full transition-colors"
       >
-        <Flame size={20} className="text-orange-500" />
-        <span className="text-sm font-medium text-gray-900">
+        <Flame size={18} className="text-orange-500" />
+        <span className="text-[13px] font-medium text-gray-900">
           연속 출석 {streakValue}일!
         </span>
       </button>
 
       <button
         onClick={goStats}
-        className="flex items-center gap-2 px-4 py-2 bg-yellow-50 hover:bg-yellow-100 rounded-full transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 hover:bg-yellow-100 rounded-full transition-colors"
       >
-        <Zap size={20} className="text-yellow-500" />
-        <span className="text-sm font-medium text-gray-900">
+        <Zap size={18} className="text-yellow-500" />
+        <span className="text-[13px] font-medium text-gray-900">
           EXP {expValue}
         </span>
       </button>

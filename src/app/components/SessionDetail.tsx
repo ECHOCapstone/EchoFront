@@ -40,6 +40,7 @@ function toLearningPrompt(sentence: SessionSentence): LearningPrompt {
     target: sentence.text,
     canRecord: true,
     ttsText: sentence.text,
+    koreanTranslation: sentence.koreanTranslation ?? null,
   };
 }
 
