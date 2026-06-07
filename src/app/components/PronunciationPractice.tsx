@@ -35,10 +35,10 @@ import {
   tracksApi,
   type Feedback,
   type LearningStep,
-  type RecordingHistoryItem,
 } from '../api';
 import { useApiResource } from '../hooks/useApiResource';
 import { useLearningSafeguards } from '../hooks/useLearningSafeguards';
+import { useResumeProgress } from '../hooks/useResumeProgress';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 import { markChapterComplete } from '../lib/trackProgress';
@@ -98,62 +98,11 @@ export default function PronunciationPractice() {
     }
   }, [scriptId, trackContext, navigate]);
 
-  // 진입 시 진행 상태를 백엔드에서 로드한다. exists=true 이면 "이어서 / 처음부터" 를 사용자에게 묻는다.
-  // null = 미해결 (로딩 중 / 처음 진입 / 사용자가 처음부터 선택). 숫자면 그 인덱스 + 1 부터 학습 재개.
-  // priorHistory 는 이어서 진입 시 이전 step 들의 압축 데이터 — LearningChatFlow 가 채팅 상단에 다시 그린다.
-  const [resumeFromIndex, setResumeFromIndex] = useState<number | null>(0);
-  const [priorHistory, setPriorHistory] = useState<Map<number, RecordingHistoryItem>>(new Map());
-  const [historicalPassThreshold, setHistoricalPassThreshold] = useState<number | undefined>(undefined);
-  useEffect(() => {
-    if (scriptId === null) return;
-    setResumeFromIndex(null);
-    setPriorHistory(new Map());
-    setHistoricalPassThreshold(undefined);
-    let cancelled = false;
-    progressApi.chapter
-      .get(scriptId)
-      .then(async (progress) => {
-        if (cancelled) return;
-        if (!progress.exists || progress.lastCompletedIndex < 0) {
-          setResumeFromIndex(0);
-          return;
-        }
-        const proceed = await confirm({
-          title: '이어서 학습',
-          description: '이전 진행이 남아 있습니다. 이어서 학습하시겠습니까?',
-          confirmLabel: '이어서',
-          cancelLabel: '처음부터',
-        });
-        if (cancelled) return;
-        if (proceed) {
-          // 이어서 선택 — 이전 step 의 데이터까지 묶어 받아둔 뒤에 채팅을 렌더한다.
-          // history 조회 실패는 학습 자체를 막지 않는다 — 빈 history 로 startFromIndex 부터만 진행.
-          try {
-            const history = await recordingsApi.historyForScript(scriptId);
-            if (cancelled) return;
-            const map = new Map<number, RecordingHistoryItem>();
-            for (const item of history.items) {
-              map.set(item.stepId, item);
-            }
-            setPriorHistory(map);
-            setHistoricalPassThreshold(history.passThreshold);
-          } catch {
-            // 빈 history 로 진입 — 학습 흐름은 그대로 이어진다.
-          }
-          if (!cancelled) setResumeFromIndex(progress.lastCompletedIndex + 1);
-        } else {
-          await progressApi.chapter.reset(scriptId).catch(() => {});
-          if (!cancelled) setResumeFromIndex(0);
-        }
-      })
-      .catch(() => {
-        // 진행 상태 조회 실패는 학습을 막지 않는다 — 처음부터 시작 가정.
-        if (!cancelled) setResumeFromIndex(0);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [scriptId, confirm]);
+  // 진입 시 진행 상태 + prior history 로드. useResumeProgress 가 SessionDetail 과 동일한 정책을 공유한다.
+  const { resumeFromIndex, priorHistory, historicalPassThreshold } = useResumeProgress({
+    mode: 'chapter',
+    id: scriptId,
+  });
 
   // 트랙 모드의 "다음 챕터로" 는 같은 라우트의 searchParams 만 바꾸므로 컴포넌트가 unmount 되지 않는다.
   // scriptId 가 바뀌면 단위 학습 로컬 상태를 명시적으로 초기화해 이전 챕터의 피드백/모달이 새 챕터에 잔류하지 않게 한다.

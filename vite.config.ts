@@ -8,6 +8,20 @@ import type { IncomingMessage } from 'node:http'
 // 위해 환경변수로 덮어쓸 수 있게 한다. prod 빌드는 이 프록시를 쓰지 않고 VITE_API_BASE_URL 을 쓴다.
 const DEV_PROXY_TARGET = process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8080'
 
+// Vite 의 Host 헤더 검증을 통과시킬 호스트 목록.
+//   - VITE_DEV_ALLOWED_HOSTS = "*"            → 전체 허용 (Cloudflare Tunnel 등 시연용)
+//   - VITE_DEV_ALLOWED_HOSTS = "a.dev,b.dev"  → 콤마로 끊어 명시
+//   - 미설정                                  → 기본 localhost 두 형태만 통과 (운영 안전 기본값)
+function resolveAllowedHosts(): true | string[] {
+  const raw = process.env.VITE_DEV_ALLOWED_HOSTS
+  if (!raw || raw.trim() === '') return ['localhost', '127.0.0.1']
+  if (raw.trim() === '*') return true
+  return raw
+    .split(',')
+    .map((host) => host.trim())
+    .filter((host) => host.length > 0)
+}
+
 // X-Forwarded-* 헤더는 콤마로 구분된 multi-value 를 가질 수 있다 (proxy 가 여러 단 거치며 누적).
 // Spring 의 ForwardedHeaderFilter 는 첫 토큰만 사용하므로 그 첫 토큰을 추출해 정리한다.
 function firstToken(value: string | string[] | undefined): string | null {
@@ -48,9 +62,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-    // Cloudflare Tunnel(*.trycloudflare.com 등) 으로 외부 노출할 때 Vite 가 Host 헤더를 검증해
-    // 차단하지 않도록 모든 호스트를 허용한다. 시연/데모용 — 정식 운영에선 도메인을 명시할 것.
-    allowedHosts: true,
+    // 외부 노출 (Cloudflare Tunnel 등) 시 Vite 가 Host 헤더를 차단하지 않도록 허용 목록을 환경변수로 받는다.
+    // 미설정 기본값은 localhost / 127.0.0.1 만 통과 — 운영 안전성을 위해 와일드카드 허용은 명시적으로 켜야 한다.
+    allowedHosts: resolveAllowedHosts(),
     // - changeOrigin: 백엔드가 Host 헤더 검증을 통과하도록 target host (localhost:8080) 로 치환.
     // - configure: X-Forwarded-* 를 incoming 헤더 기준으로 직접 정리. xfwd 자동 추가는 잘못된 포트를
     //   박을 수 있어 사용하지 않는다.

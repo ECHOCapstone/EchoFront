@@ -10,11 +10,13 @@ import { Button } from './ui/button';
 import { challengeApi } from '../api';
 import type { ChallengeHistoryItem } from '../api';
 import { paths } from '../lib/paths';
+import { notifyApiError } from '../lib/notify';
+import { BADGE_PRESET } from '../lib/challengeBadge';
 
 export default function PastChallenges() {
   const navigate = useNavigate();
   const [items, setItems] = useState<ChallengeHistoryItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,9 +26,10 @@ export default function PastChallenges() {
         if (cancelled) return;
         setItems(data);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return;
-        setError('지난 챌린지를 불러오지 못했습니다.');
+        notifyApiError(err, '지난 챌린지를 불러오지 못했습니다.');
+        setFailed(true);
       });
     return () => {
       cancelled = true;
@@ -50,8 +53,11 @@ export default function PastChallenges() {
 
         <h1 className="text-2xl font-bold text-gray-900 mb-6">지난 챌린지</h1>
 
-        {error && <p className="text-red-500">{error}</p>}
-        {!error && !items && <p className="text-gray-500">불러오는 중...</p>}
+        {/* 에러는 토스트로 노출하고 본문은 빈 상태를 보여 준다 — 인라인 빨강 텍스트와 토스트 중복 회피. */}
+        {!failed && !items && <p className="text-gray-500">불러오는 중...</p>}
+        {failed && !items && (
+          <p className="text-gray-500">지난 챌린지를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
+        )}
         {items && items.length === 0 && (
           <p className="text-gray-500">아직 지난 챌린지가 없어요.</p>
         )}
@@ -131,12 +137,6 @@ function BadgeChip({ badgeId, compact = false }: { badgeId: string; compact?: bo
     </span>
   );
 }
-
-const BADGE_PRESET: Record<string, { label: string; bg: string; text: string; iconColor: string }> = {
-  CHALLENGE_GOLD: { label: '금메달', bg: 'bg-yellow-100', text: 'text-yellow-800', iconColor: 'text-yellow-600' },
-  CHALLENGE_SILVER: { label: '은메달', bg: 'bg-gray-100', text: 'text-gray-700', iconColor: 'text-gray-500' },
-  CHALLENGE_BRONZE: { label: '동메달', bg: 'bg-orange-100', text: 'text-orange-700', iconColor: 'text-orange-500' },
-};
 
 function formatPeriod(activatedAt: string | null, deactivatedAt: string | null): string {
   if (!activatedAt) {

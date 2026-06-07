@@ -8,17 +8,8 @@ import Footer from './Footer';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import { notifyApiError, notifyError, notifyInfo } from '../lib/notify';
+import { oauthErrorMessage } from '../lib/oauthErrors';
 import { authApi, getOAuth2StartUrl, type OAuth2ProviderInfo } from '../api/auth';
-
-// 백엔드 OAuth2 실패 핸들러가 붙이는 ?oauthError=<code> 쿼리를 사용자 친화적 한국어 메시지로 매핑한다.
-// 백엔드와 코드 식별자만 공유하면 되므로 메시지는 프론트 SSOT 으로 둔다.
-const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  missing_token: '소셜 로그인 응답에서 토큰을 찾지 못했습니다. 다시 시도해 주세요.',
-  session_failed: '소셜 로그인 후 사용자 정보를 불러오지 못했습니다. 다시 시도해 주세요.',
-  invalid_user_info: '소셜 계정 정보가 올바르지 않습니다.',
-  invalid_email: '소셜 계정 이메일을 확인할 수 없습니다.',
-  access_denied: '소셜 로그인 동의가 취소되었습니다.',
-};
 
 // 라우터의 location.state 에 ProtectedRoute 가 실어 보낸 from 경로. 로그인 후 그 화면으로 복귀한다.
 type LocationState = { from?: string } | null;
@@ -63,8 +54,7 @@ export default function Login() {
   useEffect(() => {
     const code = searchParams.get('oauthError');
     if (!code) return;
-    const message = OAUTH_ERROR_MESSAGES[code] ?? '소셜 로그인에 실패했습니다.';
-    notifyError(message);
+    notifyError(oauthErrorMessage(code));
     // 같은 메시지가 새로고침/뒤로가기로 반복되지 않게 쿼리를 정리한다.
     window.history.replaceState(null, '', paths.login);
   }, [searchParams]);

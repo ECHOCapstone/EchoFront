@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { adminChallengeApi } from '../../api';
 import type { AdminChallengeListItem } from '../../api';
-import { notifyApiError, notifySuccess } from '../../lib/notify';
+import { notifyApiError, notifyError, notifySuccess } from '../../lib/notify';
 
 export default function ChallengeManager() {
   const [items, setItems] = useState<AdminChallengeListItem[]>([]);
@@ -33,7 +33,7 @@ export default function ChallengeManager() {
   const handleCreate = async () => {
     const trimmed = targetText.trim();
     if (!trimmed) {
-      notifyApiError({ code: 'INVALID_REQUEST', message: '문장을 입력해 주세요.' }, '');
+      notifyError('문장을 입력해 주세요.');
       return;
     }
     setSubmitting(true);

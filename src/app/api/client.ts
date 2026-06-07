@@ -1,10 +1,20 @@
 // 모든 백엔드 호출의 단일 통로. base URL, JWT 헤더, envelope 디코딩, 에러 정규화를 여기서만 처리한다.
 // 다른 도메인 모듈은 이 client 의 함수를 통해서만 네트워크에 접근한다.
+//
+// 토큰 저장 전략
+//   - 메모리 캐시 (tokenCache) 가 단일 출처. fetch 요청은 이 캐시만 읽어 Authorization 헤더를 만든다.
+//   - sessionStorage 는 같은 탭 내 페이지 리로드 시 캐시를 복원하기 위한 보조 수단.
+//   - localStorage 는 사용하지 않는다 — XSS 가 disk 영속 토큰을 들고 도망갈 수 있는 표면을 줄인다.
+//   - 탭을 닫으면 sessionStorage 도 함께 소거된다 — 공용 기기에서의 잔류 위험을 낮춘다.
 
 import { env } from '../lib/env';
 import type { ApiEnvelope, ApiError } from './types';
 
 const TOKEN_STORAGE_KEY = 'echo.accessToken';
+
+// 메모리 캐시 — 모든 fetch 요청이 읽는 SSOT.
+// 모듈 로드 시 sessionStorage 에서 복원한다 (같은 탭 페이지 리로드 후 재인증을 막기 위함).
+let tokenCache: string | null = readSessionToken();
 
 export class ApiException extends Error {
   readonly code: string;
@@ -28,28 +38,29 @@ type RequestInit = {
   expect?: 'json' | 'blob';
 };
 
-function readToken(): string | null {
+function readSessionToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
+    return sessionStorage.getItem(TOKEN_STORAGE_KEY);
   } catch {
     return null;
   }
 }
 
 export function setAccessToken(token: string | null) {
+  tokenCache = token;
   try {
     if (token === null) {
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      sessionStorage.removeItem(TOKEN_STORAGE_KEY);
     } else {
-      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
     }
   } catch {
-    // localStorage 비활성화 환경(시크릿 모드 등)은 무시한다.
+    // sessionStorage 비활성화 환경 (일부 시크릿 / 임베디드 브라우저) 은 메모리 캐시만으로 동작한다.
   }
 }
 
 export function getAccessToken(): string | null {
-  return readToken();
+  return tokenCache;
 }
 
 function buildUrl(path: string, query?: RequestInit['query']): string {
@@ -67,8 +78,7 @@ function buildUrl(path: string, query?: RequestInit['query']): string {
 
 async function request<T>(method: string, path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers ?? {}) };
-  const token = readToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (tokenCache) headers['Authorization'] = `Bearer ${tokenCache}`;
 
   let body: BodyInit | undefined;
   if (init.json !== undefined) {

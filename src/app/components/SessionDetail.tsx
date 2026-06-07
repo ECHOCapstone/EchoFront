@@ -25,13 +25,13 @@ import {
   recordingsApi,
   sessionsApi,
   type Feedback,
-  type RecordingHistoryItem,
   type Session,
   type SessionSentence,
 } from '../api';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 import { useLearningSafeguards } from '../hooks/useLearningSafeguards';
+import { useResumeProgress } from '../hooks/useResumeProgress';
 import { useConfirm } from './ConfirmProvider';
 
 // 문장 한 개를 LearningChatFlow 가 받는 prompt 로 변환한다. 매 prompt 가 RECORD 라
@@ -96,58 +96,11 @@ export default function SessionDetail() {
   // sentences 가 바뀌면 LearningChatFlow 를 리마운트해 채팅을 초기화한다.
   const chatKey = useMemo(() => prompts.map((p) => p.id).join(','), [prompts]);
 
-  // 진입 시 진행 상태 로드. 챕터 흐름과 같은 정책 — exists 면 confirm, null 은 미해결 (UI 가림).
-  // priorHistory 는 "이어서" 진입 시 이전 sentence 들의 압축 데이터.
-  const [resumeFromIndex, setResumeFromIndex] = useState<number | null>(0);
-  const [priorHistory, setPriorHistory] = useState<Map<number, RecordingHistoryItem>>(new Map());
-  const [historicalPassThreshold, setHistoricalPassThreshold] = useState<number | undefined>(undefined);
-  useEffect(() => {
-    if (sessionId === null) return;
-    setResumeFromIndex(null);
-    setPriorHistory(new Map());
-    setHistoricalPassThreshold(undefined);
-    let cancelled = false;
-    progressApi.session
-      .get(sessionId)
-      .then(async (progress) => {
-        if (cancelled) return;
-        if (!progress.exists || progress.lastCompletedIndex < 0) {
-          setResumeFromIndex(0);
-          return;
-        }
-        const proceed = await confirm({
-          title: '이어서 학습',
-          description: '이전 진행이 남아 있습니다. 이어서 학습하시겠습니까?',
-          confirmLabel: '이어서',
-          cancelLabel: '처음부터',
-        });
-        if (cancelled) return;
-        if (proceed) {
-          try {
-            const history = await recordingsApi.historyForSession(sessionId);
-            if (cancelled) return;
-            const map = new Map<number, RecordingHistoryItem>();
-            for (const item of history.items) {
-              map.set(item.stepId, item);
-            }
-            setPriorHistory(map);
-            setHistoricalPassThreshold(history.passThreshold);
-          } catch {
-            // 빈 history 로 진입 — 학습 흐름은 그대로 이어진다.
-          }
-          if (!cancelled) setResumeFromIndex(progress.lastCompletedIndex + 1);
-        } else {
-          await progressApi.session.reset(sessionId).catch(() => {});
-          if (!cancelled) setResumeFromIndex(0);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setResumeFromIndex(0);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, confirm]);
+  // 진입 시 진행 상태 + prior history 로드. PronunciationPractice 와 같은 정책을 공유한다.
+  const { resumeFromIndex, priorHistory, historicalPassThreshold } = useResumeProgress({
+    mode: 'session',
+    id: sessionId,
+  });
 
   const upload = useCallback(
     async (audio: Blob, prompt: LearningPrompt) => {

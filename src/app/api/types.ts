@@ -259,16 +259,6 @@ export type Stats = {
   badges: { id: string; name: string; achieved: boolean }[];
 };
 
-// 주간 발음 정확도 랭킹 응답. 백엔드 RankingResponse 와 1:1.
-//   period            : 사용자에게 보일 기간 표기 ("5/30 ~ 6/5").
-//   windowDays        : 집계에 쓰인 일수 (헤더 부제용).
-//   minActivityCount  : 랭킹 진입 임계 — 본인이 미통과면 안내 문구 ("X건 더 학습") 조립에 사용.
-//   totalRanked       : 임계를 통과한 전체 사용자 수.
-//   myRank            : 본인 순위 — 0 이면 unranked (활동 없음 또는 임계 미통과).
-//   myAccuracy        : 본인 평균 정확도 — 임계 미통과여도 진척도는 노출된다.
-//   myActivityCount   : 본인의 윈도 내 완료 건수.
-//   myEntryShown      : entries 안에 본인이 포함됐는지. false 면 별도 줄로 본인 행을 노출한다.
-//   entries           : Top N 행. activityCount 로 "X 회 학습" 부제를 함께 보여준다.
 // 어드민이 등록한 "오늘의 챌린지" 의 사용자 시점 응답.
 //   id, targetText, koreanTranslation : 챌린지 본문.
 //   activatedAt                       : 활성화 시점 — 기간 안내용 ISO 8601.

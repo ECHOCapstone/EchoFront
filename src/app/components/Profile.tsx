@@ -15,23 +15,10 @@ import { paths } from '../lib/paths';
 import { notifyApiError, notifyInfo } from '../lib/notify';
 import { useConfirm } from './ConfirmProvider';
 
-// 알림 토글의 영속 키. localStorage 가 비활성화된 환경 (시크릿 모드 등) 에서도 안전한 기본값을 유지한다.
-const NOTIFICATION_STORAGE_KEY = 'echo.notificationEnabled';
-
-function readNotificationEnabled(): boolean {
-  try {
-    const raw = localStorage.getItem(NOTIFICATION_STORAGE_KEY);
-    return raw === null ? true : raw === 'true';
-  } catch {
-    return true;
-  }
-}
-
 export default function Profile() {
   const navigate = useNavigate();
   const { user, logout, refresh } = useAuth();
   const confirm = useConfirm();
-  const [notificationEnabled, setNotificationEnabled] = useState<boolean>(readNotificationEnabled);
   const [updatingNickname, setUpdatingNickname] = useState(false);
   const [nicknameDialogOpen, setNicknameDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -53,16 +40,10 @@ export default function Profile() {
     }
     setPasswordDialogOpen(true);
   };
-  const handleNotificationToggle = () => {
-    setNotificationEnabled((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(NOTIFICATION_STORAGE_KEY, String(next));
-      } catch {
-        // localStorage 비활성화 환경 (시크릿 모드 등) 은 무시한다.
-      }
-      return next;
-    });
+  // 푸시 알림 백엔드가 아직 없어 토글이 사용자 기기에서만 휘발성으로 동작했고 실제 알림은 보내지지 않았다.
+  // 잘못된 기대(=토글 켜면 알림이 온다)를 만들지 않도록 안내 한 줄만 노출한다.
+  const handleNotificationAnnounce = () => {
+    notifyInfo('알림 기능은 아직 준비 중이에요.');
   };
 
   // 사용자가 항목을 누른 시점에 약관 본문을 가져오고, 이미 받아 둔 캐시가 있으면 재사용한다.
@@ -192,29 +173,21 @@ export default function Profile() {
           </button>
 
           <button
-            onClick={handleNotificationToggle}
+            onClick={handleNotificationAnnounce}
             className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="bg-brand-100 rounded-full p-2">
-                <Bell size={20} className="text-brand-500" />
+              <div className="bg-gray-200 rounded-full p-2">
+                <Bell size={20} className="text-gray-500" />
               </div>
-              <span className="font-medium text-gray-900">알림</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">{notificationEnabled ? 'ON' : 'OFF'}</span>
-              <div
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  notificationEnabled ? 'bg-brand-500' : 'bg-gray-300'
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform transform ${
-                    notificationEnabled ? 'translate-x-6' : 'translate-x-0.5'
-                  } mt-0.5`}
-                />
+              <div className="text-left">
+                <span className="block font-medium text-gray-900">알림</span>
+                <span className="block text-xs text-gray-500">아직 준비 중인 기능이에요</span>
               </div>
             </div>
+            <span className="text-xs font-bold text-gray-500 bg-gray-200 rounded-full px-2 py-0.5">
+              준비 중
+            </span>
           </button>
 
           <div className="space-y-2">

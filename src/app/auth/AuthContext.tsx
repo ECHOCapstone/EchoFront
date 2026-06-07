@@ -1,5 +1,6 @@
 // 로그인 상태 + 사용자 프로필을 전역에서 공유하는 단일 컨텍스트.
-// JWT 는 localStorage 에 보관되며, 새로고침 시 /api/members/me 로 재확인한다.
+// JWT 는 메모리 캐시(SSOT) + sessionStorage 백업 조합으로 보관되며 (client.ts 참조),
+// 새로고침 시 sessionStorage 에서 복원한 토큰으로 /api/members/me 를 호출해 사용자 정보를 재확인한다.
 
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {

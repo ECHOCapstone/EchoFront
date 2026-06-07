@@ -4,10 +4,13 @@ import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
 import { statsApi } from '../api';
 import { useApiResource } from '../hooks/useApiResource';
+import { useAuth } from '../auth/useAuth';
+import { getAttendanceColor } from '../lib/attendance';
 import { getBadgeImage } from './badgeImages';
 
 export default function Stats() {
   const today = new Date();
+  const { user } = useAuth();
   // 사용자가 보고 있는 캘린더 월. 화살표 클릭으로만 변경되고, 변경되면 새 데이터를 fetch 한다.
   const [calendar, setCalendar] = useState({
     year: today.getFullYear(),
@@ -43,25 +46,19 @@ export default function Stats() {
     calendar.year > today.getFullYear()
     || (calendar.year === today.getFullYear() && calendar.month >= today.getMonth() + 1);
 
+  // 가입 월 이전으로도 갈 수 없다 — 사용자가 가입하지 않은 기간의 빈 캘린더 무한 탐색을 막는다.
+  // user 가 아직 로드 안 됐으면 가드를 잠시 비활성화 (UX 손상 방지).
+  const joinedAt = user?.createdAt ? new Date(user.createdAt) : null;
+  const isPastBlocked = joinedAt
+    ? calendar.year < joinedAt.getFullYear()
+      || (calendar.year === joinedAt.getFullYear() && calendar.month <= joinedAt.getMonth() + 1)
+    : false;
+
   const days = stats?.attendance.days ?? {};
 
   const weeklyErrors = stats?.weeklyErrors ?? [];
   const maxErrorCount = weeklyErrors.length > 0 ? Math.max(...weeklyErrors.map((e) => e.count)) : 1;
   const badges = stats?.badges ?? [];
-
-  // streak 일수가 늘수록 진해진다. 7일 이상은 모두 가장 진한 단계로 묶어 한도를 둔다.
-  const ATTENDANCE_COLORS = [
-    'bg-gray-100',
-    'bg-brand-100',
-    'bg-brand-200',
-    'bg-brand-300',
-    'bg-brand-400',
-    'bg-brand-500',
-    'bg-brand-600',
-    'bg-brand-700',
-  ] as const;
-  const getAttendanceColor = (streakDays: number): string =>
-    ATTENDANCE_COLORS[Math.min(Math.max(streakDays, 0), ATTENDANCE_COLORS.length - 1)];
 
   return (
     <div className="min-h-screen bg-white max-w-md mx-auto md:shadow-xl flex flex-col">
@@ -75,7 +72,8 @@ export default function Stats() {
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={() => shiftMonth(-1)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              disabled={isPastBlocked}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               aria-label="지난 달"
             >
               <ChevronLeft size={22} className="text-gray-700" />

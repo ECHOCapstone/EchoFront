@@ -14,7 +14,7 @@ export const PASS_THRESHOLD_FALLBACK = 75;
 export const EXCELLENCE_THRESHOLD = 90;
 
 // 합격선 미만에서 "보통(주황)" 과 "낮음(빨강)" 을 가르는 비율 — passThreshold × 이 비율 미만이면 poor.
-// 합격선 80 기준 50 점 근처가 경계가 된다.
+// 합격선 75 기준 약 47 점 근처가 경계가 된다.
 export const POOR_RATIO = 0.625;
 
 // 점수의 시각 등급. 색 토큰·헤드라인·효과음 분기의 단일 키.
