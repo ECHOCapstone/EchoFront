@@ -8,6 +8,7 @@ import { paths } from '../../lib/paths';
 import LlmSettingsSection from './LlmSettingsSection';
 import AsrModelSection from './AsrModelSection';
 import BadgeManager from './BadgeManager';
+import ChallengeManager from './ChallengeManager';
 import ContentSection from './ContentSection';
 import LegalManager from './LegalManager';
 import PromptManager from './PromptManager';
@@ -22,6 +23,7 @@ type TabKey =
   | 'phoneme'
   | 'settings'
   | 'badge'
+  | 'challenge'
   | 'legal'
   | 'system';
 
@@ -32,6 +34,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'phoneme', label: '음소' },
   { key: 'settings', label: '설정' },
   { key: 'badge', label: '배지' },
+  { key: 'challenge', label: '챌린지' },
   { key: 'legal', label: '약관' },
   { key: 'system', label: '상태' },
 ];
@@ -84,6 +87,7 @@ export default function AdminPage() {
           {tab === 'phoneme' && <PhonemeManager />}
           {tab === 'settings' && <SettingsManager />}
           {tab === 'badge' && <BadgeManager />}
+          {tab === 'challenge' && <ChallengeManager />}
           {tab === 'legal' && <LegalManager />}
           {tab === 'system' && <SystemStatusSection />}
         </div>

@@ -32,7 +32,10 @@ export const paths = {
   feedbacks: '/feedbacks',
   stats: '/stats',
   profile: '/profile',
-  ranking: '/ranking',
+  // "오늘의 챌린지" 진입점. 기존 주간 랭킹 자리를 그대로 차지하므로 메뉴 / 아이콘은 그대로 둔다.
+  challenge: '/challenge',
+  // 이전 챌린지 히스토리 페이지.
+  pastChallenges: '/challenge/history',
   // 관리자(ADMIN) 전용. AdminRoute 가드가 권한을 검사한다.
   admin: '/admin',
 } as const;

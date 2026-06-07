@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router';
 import { Home, LineChart, Trophy, User } from 'lucide-react';
 import { paths } from '../../lib/paths';
 
-export type BottomNavTab = 'home' | 'ranking' | 'stats' | 'profile';
+export type BottomNavTab = 'home' | 'challenge' | 'stats' | 'profile';
 export type BottomNavVariant = 'main' | 'study';
 
 interface BottomNavProps {
@@ -16,13 +16,14 @@ interface BottomNavProps {
 }
 
 const VARIANT_TABS: Record<BottomNavVariant, BottomNavTab[]> = {
-  main: ['home', 'ranking', 'stats', 'profile'],
+  main: ['home', 'challenge', 'stats', 'profile'],
   study: ['home', 'profile'],
 };
 
 const TAB_META: Record<BottomNavTab, { label: string; path: string; Icon: typeof Home }> = {
   home: { label: '홈', path: paths.main, Icon: Home },
-  ranking: { label: '랭킹', path: paths.ranking, Icon: Trophy },
+  // 기존 "랭킹" 자리에 "오늘의 챌린지" 진입점. 아이콘은 Trophy 유지 (의미상 일관).
+  challenge: { label: '챌린지', path: paths.challenge, Icon: Trophy },
   stats: { label: '통계', path: paths.stats, Icon: LineChart },
   profile: { label: '프로필', path: paths.profile, Icon: User },
 };
