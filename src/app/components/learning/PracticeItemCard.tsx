@@ -16,6 +16,7 @@ import { feedbackApi, type PhonemeTip, type PracticeItem } from '../../api';
 import { useRecorder } from '../../hooks/useRecorder';
 import { notifyApiError } from '../../lib/notify';
 import { playScoreFanfare } from '../../lib/scoreFanfare';
+import { renderInlineMarkdown } from '../../lib/markdownLite';
 import { feedbackPresentation } from './feedbackPresentation';
 import MicPermissionModal from './MicPermissionModal';
 
@@ -184,7 +185,9 @@ function AttemptResult({ attempt, isLatest }: { attempt: Attempt; isLatest: bool
           <span className="text-sm font-medium text-gray-500 ml-1">점</span>
         </p>
         {attempt.guidanceKr && (
-          <p className="text-sm text-gray-700 leading-relaxed">{attempt.guidanceKr}</p>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            {renderInlineMarkdown(attempt.guidanceKr)}
+          </p>
         )}
         {attempt.phonemeTips.length > 0 && (
           <ul className="mt-2 space-y-1">
