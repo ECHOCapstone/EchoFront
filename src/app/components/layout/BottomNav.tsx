@@ -34,7 +34,11 @@ export default function BottomNav({ active, variant = 'main' }: BottomNavProps) 
   return (
     // 데스크톱에서는 폰 프레임 안쪽에 정확히 붙도록 left-1/2 + translate-x 로 가운데 정렬.
     // 모바일은 max-w-md 가 뷰포트보다 커서 w-full 그대로 화면 폭을 차지한다.
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 shadow-lg">
+    // pb-[env(...)] : iOS 노치/홈 인디케이터 영역만큼 하단 패딩을 자동으로 확보해 탭 라벨이 가려지지 않게 한다.
+    <nav
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 shadow-lg"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       <div className="flex justify-around items-center h-20">
         {tabs.map((tab) => {
           const { label, path, Icon } = TAB_META[tab];

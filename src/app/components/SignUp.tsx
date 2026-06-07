@@ -29,6 +29,7 @@ type FormErrors = {
   password?: string;
   passwordConfirm?: string;
   email?: string;
+  nickname?: string;
   agreements?: string;
 };
 
@@ -165,6 +166,15 @@ export default function SignUp() {
   //   OAuth 가입 완료 : nickname / 동의 (id 와 email 은 백엔드가 결정하므로 검증 대상이 아니다)
   const validate = (): FormErrors => {
     const next: FormErrors = {};
+    // 닉네임은 표준 / OAuth 가입 모두 백엔드 정책 (1~30자) 의 대상이라 클라이언트에서도 같은 범위로 가드한다.
+    // OAuth 가입은 nicknameHint 로 폴백되므로 입력값이 비어 있어도 hint 가 있으면 통과시킨다.
+    const nicknameValue = formData.nickname.trim();
+    const effectiveNickname = nicknameValue || (oauthCtx?.nicknameHint ?? '').trim();
+    if (!effectiveNickname) {
+      next.nickname = '닉네임을 입력해주세요.';
+    } else if (effectiveNickname.length > 30) {
+      next.nickname = '닉네임은 30자 이하여야 합니다.';
+    }
     if (!oauthCtx) {
       if (!formData.id) next.id = '아이디를 입력해주세요.';
       else if (checkStatus.id === 'taken') next.id = '이미 사용 중인 아이디입니다.';

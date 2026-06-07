@@ -2,7 +2,7 @@
 // 앱 어디서든 const confirm = useConfirm(); 후 await confirm({...}) 로 사용자의 선택(boolean)을 받는다.
 // 표시는 앱의 AlertDialog(shadcn) 로 일관되게 렌더한다.
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,16 +46,30 @@ interface PendingConfirm {
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<PendingConfirm | null>(null);
+  // 직전 pending 의 resolve 를 ref 로 추적해, 새 confirm 호출이 들어오면 이전 Promise 를 false 로
+  // 깨워 영구 미해결되는 것을 막는다. setPending 만으로 덮어쓰면 직전 await 가 영영 resolve 안 된다.
+  const pendingRef = useRef<PendingConfirm | null>(null);
 
   const confirm = useCallback<ConfirmFn>(
-    (options) => new Promise<boolean>((resolve) => setPending({ options, resolve })),
+    (options) =>
+      new Promise<boolean>((resolve) => {
+        const previous = pendingRef.current;
+        if (previous) {
+          previous.resolve(false);
+        }
+        const next = { options, resolve };
+        pendingRef.current = next;
+        setPending(next);
+      }),
     []
   );
 
-  // 선택을 확정하고 대기 중이던 Promise 를 깨운다.
+  // 선택을 확정하고 대기 중이던 Promise 를 깨운다. ref 와 state 양쪽을 모두 비워 다음 호출이 깨끗이 시작되게 한다.
   const settle = (result: boolean) => {
-    pending?.resolve(result);
+    const current = pendingRef.current;
+    pendingRef.current = null;
     setPending(null);
+    current?.resolve(result);
   };
 
   const options = pending?.options;
