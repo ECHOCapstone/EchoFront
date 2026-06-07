@@ -9,7 +9,7 @@
 //     - 마지막 챕터면: 트랙 완주 모달 노출 후 트랙 상세로 복귀
 //   단일 모드(트랙 컨텍스트 없음)일 때는 FeedbackFlow 기본 동작(=랭킹 이동) 을 그대로 사용한다.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
@@ -36,6 +36,7 @@ import {
   type LearningStep,
 } from '../api';
 import { useApiResource } from '../hooks/useApiResource';
+import { useLearningSafeguards } from '../hooks/useLearningSafeguards';
 import { paths } from '../lib/paths';
 import { notifyApiError } from '../lib/notify';
 import { markChapterComplete } from '../lib/trackProgress';
@@ -85,6 +86,8 @@ export default function PronunciationPractice() {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [generating, setGenerating] = useState(false);
   const [trackCompleteOpen, setTrackCompleteOpen] = useState(false);
+  // 진행 중인 종합 피드백 생성 요청을 추적해 컴포넌트 unmount 시 fetch 를 끊는다 — 메모리 누수 / 잔여 setState 차단.
+  const generateAbortRef = useRef<AbortController | null>(null);
 
   // scriptId 가 비어 있거나 잘못된 경우 트랙 목록(트랙 모드일 땐 트랙 상세) 으로 되돌린다.
   useEffect(() => {
@@ -140,26 +143,49 @@ export default function PronunciationPractice() {
     [script]
   );
 
-  // 마지막 RECORD 가 끝났을 때 종합 피드백 생성 진입.
+  // 마지막 RECORD 가 끝났을 때 종합 피드백 생성 진입. AbortController 로 진행 중 요청을 추적해
+  // 컴포넌트 unmount 시 fetch 를 끊는다.
   const handleUnitComplete = useCallback(
     (recordingIds: number[]) => {
       if (!script || recordingIds.length === 0) return;
+      generateAbortRef.current?.abort();
+      const controller = new AbortController();
+      generateAbortRef.current = controller;
       setGenerating(true);
       feedbackApi
-        .generate({ scriptId: script.id, recordingIds })
+        .generate({ scriptId: script.id, recordingIds }, controller.signal)
         .then(setFeedback)
-        .catch((err: unknown) => notifyApiError(err, '피드백 생성에 실패했습니다.'))
-        .finally(() => setGenerating(false));
+        .catch((err: unknown) => {
+          // 정상 abort 는 사용자에게 알리지 않는다 — 컴포넌트 이탈이 명시적 행동이므로 토스트가 거슬린다.
+          if (err instanceof DOMException && err.name === 'AbortError') return;
+          notifyApiError(err, '피드백 생성에 실패했습니다.');
+        })
+        .finally(() => {
+          if (generateAbortRef.current === controller) {
+            generateAbortRef.current = null;
+            setGenerating(false);
+          }
+        });
     },
     [script]
   );
 
+  // 컴포넌트 unmount 시 진행 중인 generate 요청을 일괄 차단한다.
+  useEffect(() => () => generateAbortRef.current?.abort(), []);
+
   // 학습 도중 "학습 끝내기" 버튼이 눌렸을 때 어디로 빠져나갈지. 트랙 모드면 트랙 상세, 아니면 트랙 목록.
   const exitDestination = trackContext ? paths.trackOverview(trackContext.trackId) : paths.tracks;
-  const handleEndLearning = async () => {
-    const ok = await confirm({ title: '학습 종료', description: '학습을 끝내시겠습니까?', confirmLabel: '끝내기' });
+  // 학습이 실제로 진행 중이면 새로고침 / 뒤로가기에 안전망을 건다. 종합 피드백 단계는 학습 자체가 끝났으므로 풀어 준다.
+  const learningInProgress = feedback === null && !generating;
+  const handleEndLearning = useCallback(async () => {
+    const ok = await confirm({
+      title: '학습 종료',
+      description: '진행한 내용이 저장되지 않을 수 있습니다. 학습을 끝내시겠습니까?',
+      confirmLabel: '끝내기',
+    });
     if (ok) navigate(exitDestination);
-  };
+  }, [confirm, navigate, exitDestination]);
+  useLearningSafeguards({ dirty: learningInProgress, onAttemptLeave: handleEndLearning });
 
   // 트랙 모드에서 다음 챕터/완주 처리. 단일 모드일 때는 undefined 를 반환하여
   // FeedbackFlow 기본 동작(=랭킹 이동) 이 그대로 적용된다.

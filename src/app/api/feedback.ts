@@ -15,8 +15,10 @@ export type RetryWordOptions = {
 };
 
 export const feedbackApi = {
-  generate: (input: GenerateFeedbackInput) =>
-    apiClient.post<Feedback>('/api/feedback/generate', { json: input }),
+  // 종합 피드백 생성은 LLM 호출이 길어 사용자가 도중에 이탈할 수 있다 — signal 로 fetch 를 취소해
+  // 호출 측이 컴포넌트 unmount 시 진행 중인 요청을 안전하게 끊는다.
+  generate: (input: GenerateFeedbackInput, signal?: AbortSignal) =>
+    apiClient.post<Feedback>('/api/feedback/generate', { json: input, signal }),
   retryWord: (feedbackId: number, audio: Blob, options: RetryWordOptions = {}) => {
     const form = new FormData();
     form.append('audio', audio, options.filename ?? 'audio.wav');
