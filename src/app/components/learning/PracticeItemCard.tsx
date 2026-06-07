@@ -78,7 +78,12 @@ export default function PracticeItemCard({ feedbackId, item }: PracticeItemCardP
       toast.info('다른 카드가 녹음 중이에요. 끝나면 다시 시도해 주세요.');
       return;
     }
-    await recorder.start();
+    // start 가 false 를 돌려준 경우 (권한 거부 / 미지원 / 더블 클릭) lock 이 그대로 남으면 다른 카드가
+    // 영영 막힌다. 결과를 직접 보고 즉시 푼다 — closure 의 status 는 stale 이라 신뢰할 수 없다.
+    const started = await recorder.start();
+    if (!started) {
+      lock.release(lockKey);
+    }
   };
 
   const handleStop = async () => {

@@ -42,12 +42,16 @@ export function useRecorder() {
     chunksRef.current = [];
   }, []);
 
-  const start = useCallback(async () => {
-    if (status === 'recording' || status === 'stopping') return;
+  // 녹음이 실제로 시작됐는지 (recording 상태로 전이됐는지) 호출 측이 동기적으로 알 수 있게 boolean 을 반환한다.
+  // false 면 권한 거부 / 미지원 / 빠른 더블 클릭 같은 케이스라 호출 측이 lock 해제 같은 정리를 즉시 수행할 수 있다.
+  const start = useCallback(async (): Promise<boolean> => {
+    // 빠른 더블 클릭은 closure 의 옛 status 가 아니라 실제 ref 의 MediaRecorder 상태로 가드한다.
+    if (recorderRef.current?.state === 'recording') return false;
+    if (status === 'stopping') return false;
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || typeof MediaRecorder === 'undefined') {
       setStatus('unsupported');
       setErrorMessage('이 브라우저는 녹음 기능을 지원하지 않습니다.');
-      return;
+      return false;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -94,10 +98,12 @@ export function useRecorder() {
       recorder.start();
       setStatus('recording');
       setErrorMessage(null);
+      return true;
     } catch (e) {
       const message = e instanceof Error ? e.message : '마이크 접근이 거부되었습니다.';
       setStatus('denied');
       setErrorMessage(message);
+      return false;
     }
   }, [status, cleanupStream]);
 
