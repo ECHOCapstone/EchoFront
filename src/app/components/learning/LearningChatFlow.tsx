@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { UserBubble } from '../ChatBubble';
 import { useRecorder } from '../../hooks/useRecorder';
 import { useTtsPlayer } from '../../hooks/useTtsPlayer';
-import type { RecordingResult } from '../../api';
+import type { RecordingHistoryItem, RecordingResult } from '../../api';
 import { notifyApiError } from '../../lib/notify';
 import FeedbackBubble, { type FeedbackData } from './FeedbackBubble';
 import PromptBubble from './PromptBubble';
@@ -49,6 +49,12 @@ interface LearningChatFlowProps {
   // 이어서 학습 시 시작할 prompt 의 0-based 인덱스. 미지정 시 처음(0)부터 시작한다.
   // 음수 / 범위 초과 값은 무시되어 안전하게 0 으로 정규화된다.
   startFromIndex?: number;
+  // 이어서 학습 시 startFromIndex 직전까지의 prompt 들에 대해 채팅에 다시 그릴 historical 데이터.
+  // prompt.id (= LearningStep.id / SessionSentence.id) 를 키로 사용한다. 항목이 비면 해당 prompt 는 그리지 않는다.
+  priorHistory?: Map<number, RecordingHistoryItem>;
+  // historical 카드의 통과 여부 판정에 쓰는 임계. 응답 시점의 RuntimeSettings.passThreshold.
+  // 미지정 시 점수 단독으로 tier 가 결정되어도 시각이 어긋나지 않는 안전한 기본값을 사용한다.
+  historicalPassThreshold?: number;
 }
 
 // 채팅 흐름의 한 항목. 봇 안내(bot-prompt) · 사용자 녹음 표시(user-record) · 피드백(bot-feedback) 셋 중 하나다.
@@ -67,15 +73,23 @@ export default function LearningChatFlow({
   advanceLabel = '다음으로',
   finalAdvanceLabel = '학습 마무리',
   startFromIndex = 0,
+  priorHistory,
+  historicalPassThreshold,
 }: LearningChatFlowProps) {
   const recorder = useRecorder();
   const tts = useTtsPlayer();
 
   // prompts 가 바뀌면 부모가 key 로 리마운트한다는 가정 아래, 초기값은 한 번만 계산한다.
-  const initial = useMemo(() => buildInitial(prompts, startFromIndex), [prompts, startFromIndex]);
+  // priorHistory 가 있으면 startFromIndex 직전까지의 prompt 마다 (봇 안내 + 사용자 점수 + 압축 피드백) 3 카드를 자동 삽입한다.
+  const initial = useMemo(
+    () => buildInitial(prompts, startFromIndex, priorHistory, historicalPassThreshold),
+    [prompts, startFromIndex, priorHistory, historicalPassThreshold],
+  );
   const [chat, setChat] = useState<ChatItem[]>(initial.items);
   const [promptIndex, setPromptIndex] = useState(initial.cursor);
-  const [latestRecordingByPromptId, setLatestRecordingByPromptId] = useState<Record<number, number>>({});
+  // 이전 시도 recording id 도 onUnitComplete 가 호출하는 종합 피드백 generate 에 포함되어야 챕터 전체가 채점된다.
+  const [latestRecordingByPromptId, setLatestRecordingByPromptId] =
+      useState<Record<number, number>>(initial.latestRecordingByPromptId);
   const [busyStep, setBusyStep] = useState(false);
   const [doneSignaled, setDoneSignaled] = useState(false);
   // 사용자가 권한 모달을 "나중에" 로 닫았는지. status 가 다시 denied 로 떨어져도 같은 세션 동안은 안 띄운다.
@@ -279,14 +293,46 @@ export default function LearningChatFlow({
 
 // 첫 RECORD 가 등장할 때까지의 INTRO 들 + 그 RECORD 까지를 한 묶음으로 보여준다.
 // 모두 INTRO 라면 전체를 한 번에 보여주고 cursor 는 끝으로 이동한다.
-// startFromIndex 가 0 보다 크면 그 위치 직전까지의 prompt 들은 건너뛰고, startFromIndex 부터 같은
-// "다음 RECORD 까지" 묶음을 만든다 — "이어서" 흐름에서 이미 끝낸 step 을 다시 보여주지 않는다.
+// startFromIndex 가 0 보다 크고 priorHistory 가 있으면, 그 위치 직전까지의 prompt 마다 (봇 안내 + 사용자
+// 녹음 + 압축 피드백) 3 카드를 자동 삽입해 "내가 어디까지 했는지" 가 자연스럽게 이어진다.
+// 학습 흐름 정합성을 위해 historical 카드의 recordingId 도 latestRecordingByPromptId 에 누적해 종합
+// 피드백 generate 호출에 함께 실린다.
 function buildInitial(
   prompts: LearningPrompt[],
   startFromIndex: number,
-): { items: ChatItem[]; cursor: number } {
+  priorHistory?: Map<number, RecordingHistoryItem>,
+  historicalPassThreshold?: number,
+): {
+  items: ChatItem[];
+  cursor: number;
+  latestRecordingByPromptId: Record<number, number>;
+} {
   const items: ChatItem[] = [];
   const safeStart = Math.max(0, Math.min(startFromIndex, prompts.length));
+  const latestRecordingByPromptId: Record<number, number> = {};
+
+  // 이어서 진입 — startFromIndex 직전 prompt 들의 historical 카드를 채운다.
+  for (let i = 0; i < safeStart && i < prompts.length; i += 1) {
+    const prompt = prompts[i];
+    const history = priorHistory?.get(prompt.id);
+    if (!history) continue;
+    items.push({ kind: 'bot-prompt', key: `p-${prompt.id}-history`, prompt });
+    items.push({
+      kind: 'user-record',
+      key: `u-${history.recordingId}-history`,
+      promptId: prompt.id,
+      score: history.stepScore,
+    });
+    items.push({
+      kind: 'bot-feedback',
+      key: `f-${history.recordingId}-history`,
+      promptId: prompt.id,
+      data: toHistoricalFeedbackData(history, prompt, historicalPassThreshold),
+    });
+    latestRecordingByPromptId[prompt.id] = history.recordingId;
+  }
+
+  // 새 prompt 묶음 — 첫 RECORD 가 등장할 때까지의 INTRO 들 + 그 RECORD.
   let cursor = safeStart;
   while (cursor < prompts.length) {
     const p = prompts[cursor];
@@ -294,5 +340,40 @@ function buildInitial(
     if (p.canRecord) break;
     cursor += 1;
   }
-  return { items, cursor };
+  return { items, cursor, latestRecordingByPromptId };
+}
+
+// 저장된 historical 데이터를 FeedbackBubble 이 그대로 받는 FeedbackData 형태로 펼친다.
+// 새 시도와 형식이 같으므로 점수 게이지 / 가이드 / 음소 정렬 시각화가 자연스럽게 재현된다.
+// LLM 응답에만 있던 phonemeTips / strengths / weaknesses / speechRate 는 저장되지 않아 빈 값으로 채운다 —
+// FeedbackBubble 은 비어 있는 줄을 그리지 않아 UI 가 어색해지지 않는다.
+function toHistoricalFeedbackData(
+  history: RecordingHistoryItem,
+  prompt: LearningPrompt,
+  historicalPassThreshold: number | undefined,
+): FeedbackData {
+  const score = history.stepScore;
+  const threshold = historicalPassThreshold ?? null;
+  return {
+    guidanceKr: history.guidanceKr,
+    score,
+    // 통과 신호는 score >= passThreshold 가 SSOT — score / threshold 어느 한쪽이라도 비면 false.
+    passed: score !== null && threshold !== null && score >= threshold,
+    retryRecommended: false,
+    strengths: [],
+    weaknesses: [],
+    phonemeTips: [],
+    speechRate: 'NORMAL',
+    alignment: {
+      targetText: prompt.target,
+      perceived: history.perceived,
+      canonical: history.canonical,
+      errors: history.errors,
+      wrongWords: history.wrongWords,
+      // 단어별 canonical 음소 (g2p 결과) 는 저장하지 않으므로 비워 둔다 —
+      // FeedbackPhonemeSection 은 빈 배열을 받으면 한 줄 음소로 자연스럽게 폴백한다.
+      canonicalWords: [],
+    },
+    passThreshold: threshold,
+  };
 }

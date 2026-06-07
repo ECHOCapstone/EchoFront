@@ -333,6 +333,34 @@ export type BadgeInput = {
   threshold: number;
 };
 
+// "이어서 학습" 진입 시 사용자에게 다시 보여 줄 이전 시도의 압축 데이터.
+//   recordingId       : 종합 피드백 generate 호출 시 사용 (학습 흐름 재개 시 마지막 step 까지의 latest id 묶음에 포함).
+//   stepId            : chapter 모드는 LearningStep.id, session 모드는 SessionSentence.id — prompt.id 와 같다.
+//   stepScore         : 0~100. 분석 실패 등으로 null 가능.
+//   guidanceKr        : LLM 이 만든 한국어 가이드. 없으면 빈 문자열.
+//   perceived/canonical : 모델 음소 시퀀스. 빈 배열이면 시각화는 생략.
+//   errors / wrongWords : 저장된 오류 / 약점 단어 데이터 — FeedbackBubble 의 음소 정렬 / 단어 강조에 그대로 사용.
+//   createdAt         : 시도 시각.
+export type RecordingHistoryItem = {
+  recordingId: number;
+  stepId: number;
+  stepScore: number | null;
+  guidanceKr: string;
+  perceived: string[];
+  canonical: string[];
+  errors: PhonemeError[];
+  wrongWords: WrongWord[];
+  createdAt: string;
+};
+
+// 챕터 / 세션의 이전 시도 묶음.
+export type RecordingHistory = {
+  // 응답 시점의 통과 임계 — FE 가 historical 점수의 통과 여부 판정에 사용.
+  passThreshold: number;
+  // step / sentence 별 가장 최근 한 건씩. 시간 순 ASC.
+  items: RecordingHistoryItem[];
+};
+
 // 영어 → 한국어 번역 응답 한 건. target 이 빈 문자열이면 외부 호출이 실패했거나 provider 가 noop 으로 폴백된 상태.
 export type TranslationItem = {
   source: string;

@@ -35,6 +35,7 @@ import {
   tracksApi,
   type Feedback,
   type LearningStep,
+  type RecordingHistoryItem,
 } from '../api';
 import { useApiResource } from '../hooks/useApiResource';
 import { useLearningSafeguards } from '../hooks/useLearningSafeguards';
@@ -99,10 +100,15 @@ export default function PronunciationPractice() {
 
   // 진입 시 진행 상태를 백엔드에서 로드한다. exists=true 이면 "이어서 / 처음부터" 를 사용자에게 묻는다.
   // null = 미해결 (로딩 중 / 처음 진입 / 사용자가 처음부터 선택). 숫자면 그 인덱스 + 1 부터 학습 재개.
+  // priorHistory 는 이어서 진입 시 이전 step 들의 압축 데이터 — LearningChatFlow 가 채팅 상단에 다시 그린다.
   const [resumeFromIndex, setResumeFromIndex] = useState<number | null>(0);
+  const [priorHistory, setPriorHistory] = useState<Map<number, RecordingHistoryItem>>(new Map());
+  const [historicalPassThreshold, setHistoricalPassThreshold] = useState<number | undefined>(undefined);
   useEffect(() => {
     if (scriptId === null) return;
     setResumeFromIndex(null);
+    setPriorHistory(new Map());
+    setHistoricalPassThreshold(undefined);
     let cancelled = false;
     progressApi.chapter
       .get(scriptId)
@@ -120,7 +126,21 @@ export default function PronunciationPractice() {
         });
         if (cancelled) return;
         if (proceed) {
-          setResumeFromIndex(progress.lastCompletedIndex + 1);
+          // 이어서 선택 — 이전 step 의 데이터까지 묶어 받아둔 뒤에 채팅을 렌더한다.
+          // history 조회 실패는 학습 자체를 막지 않는다 — 빈 history 로 startFromIndex 부터만 진행.
+          try {
+            const history = await recordingsApi.historyForScript(scriptId);
+            if (cancelled) return;
+            const map = new Map<number, RecordingHistoryItem>();
+            for (const item of history.items) {
+              map.set(item.stepId, item);
+            }
+            setPriorHistory(map);
+            setHistoricalPassThreshold(history.passThreshold);
+          } catch {
+            // 빈 history 로 진입 — 학습 흐름은 그대로 이어진다.
+          }
+          if (!cancelled) setResumeFromIndex(progress.lastCompletedIndex + 1);
         } else {
           await progressApi.chapter.reset(scriptId).catch(() => {});
           if (!cancelled) setResumeFromIndex(0);
@@ -312,6 +332,8 @@ export default function PronunciationPractice() {
                 void progressApi.chapter.advance(script.id, idx).catch(() => {});
               }}
               startFromIndex={resumeFromIndex}
+              priorHistory={priorHistory}
+              historicalPassThreshold={historicalPassThreshold}
               disabled={generating || feedback !== null}
               advanceLabel="다음 단계로"
             />
