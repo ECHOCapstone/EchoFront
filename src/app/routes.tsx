@@ -13,7 +13,8 @@ import CustomLearning from './components/CustomLearning';
 import SessionDetail from './components/SessionDetail';
 import PronunciationPractice from './components/PronunciationPractice';
 import Feedbacks from './components/Feedbacks';
-import Ranking from './components/Ranking';
+import Challenge from './components/Challenge';
+import PastChallenges from './components/PastChallenges';
 import AdminPage from './components/admin/AdminPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AdminRoute } from './auth/AdminRoute';
@@ -51,7 +52,8 @@ export const router = createBrowserRouter([
       { path: '/feedbacks', Component: guard(Feedbacks) },
       { path: '/stats', Component: guard(Stats) },
       { path: '/profile', Component: guard(Profile) },
-      { path: '/ranking', Component: guard(Ranking) },
+      { path: '/challenge', Component: guard(Challenge) },
+      { path: '/challenge/history', Component: guard(PastChallenges) },
       { path: '/admin', Component: adminGuard(AdminPage) },
     ],
   },

@@ -269,22 +269,81 @@ export type Stats = {
 //   myActivityCount   : 본인의 윈도 내 완료 건수.
 //   myEntryShown      : entries 안에 본인이 포함됐는지. false 면 별도 줄로 본인 행을 노출한다.
 //   entries           : Top N 행. activityCount 로 "X 회 학습" 부제를 함께 보여준다.
-export type Ranking = {
-  period: string;
-  windowDays: number;
-  minActivityCount: number;
+// 어드민이 등록한 "오늘의 챌린지" 의 사용자 시점 응답.
+//   id, targetText, koreanTranslation : 챌린지 본문.
+//   activatedAt                       : 활성화 시점 — 기간 안내용 ISO 8601.
+//   attemptsToday / attemptsLimit     : 본인 오늘 도전 횟수 / 하루 상한.
+//   myBestScore                       : 본인의 챌린지 best 점수 (미도전이면 null).
+export type ChallengeCurrent = {
+  id: number;
+  targetText: string;
+  koreanTranslation: string | null;
+  activatedAt: string | null;
+  attemptsToday: number;
+  attemptsLimit: number;
+  myBestScore: number | null;
+};
+
+// 한 번의 챌린지 도전 결과. isMyNewBest 가 true 면 효과음/애니메이션 트리거에 사용한다.
+export type ChallengeAttempt = {
+  attemptId: number;
+  score: number;
+  passThreshold: number;
+  isMyNewBest: boolean;
+  attemptsToday: number;
+  attemptsLimit: number;
+  perceived: string[];
+  canonical: string[];
+  errors: {
+    op: string;
+    canonical: string | null;
+    perceived: string | null;
+    canonicalIndex: number | null;
+  }[];
+};
+
+// 챌린지 랭킹 응답.
+export type ChallengeRanking = {
+  challengeId: number;
+  targetText: string;
   totalRanked: number;
   myRank: number;
-  myAccuracy: number;
-  myActivityCount: number;
+  myBestScore: number | null;
+  myAttempts: number;
   myEntryShown: boolean;
   entries: {
     rank: number;
     nickname: string;
-    accuracy: number;
-    activityCount: number;
+    bestScore: number;
+    attempts: number;
     isMe: boolean;
   }[];
+};
+
+// "지난 챌린지" 한 행. 1~3등 미니뷰와 본인 결과가 함께 들어 있다.
+export type ChallengeHistoryItem = {
+  id: number;
+  targetText: string;
+  koreanTranslation: string | null;
+  activatedAt: string | null;
+  deactivatedAt: string | null;
+  topEntries: { rank: number; nickname: string; bestScore: number; badgeId: string | null }[];
+  myBestScore: number | null;
+  myRank: number;
+  myBadgeId: string | null;
+};
+
+// 어드민 챌린지 목록의 한 행.
+export type AdminChallengeListItem = {
+  id: number;
+  targetText: string;
+  koreanTranslation: string | null;
+  active: boolean;
+  createdAt: string;
+  activatedAt: string | null;
+  deactivatedAt: string | null;
+  totalAttempts: number;
+  totalParticipants: number;
 };
 
 // 학습 트랙 목록 화면에 노출되는 메타. chapterCount 로 분량을 가늠한다.

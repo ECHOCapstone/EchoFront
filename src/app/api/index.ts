@@ -5,7 +5,7 @@ export { sessionsApi } from './sessions';
 export { recordingsApi } from './recordings';
 export { feedbackApi } from './feedback';
 export { statsApi } from './stats';
-export { rankingApi } from './ranking';
+export { challengeApi, adminChallengeApi } from './challenge';
 export { translationsApi } from './translations';
 export { progressApi } from './progress';
 export type { Progress } from './progress';

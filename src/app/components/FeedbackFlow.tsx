@@ -79,7 +79,7 @@ export default function FeedbackFlow({
       onComplete();
       return;
     }
-    navigate(paths.ranking);
+    navigate(paths.challenge);
   };
 
   return (
