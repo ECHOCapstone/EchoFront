@@ -6,23 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScanText, X } from 'lucide-react';
 import type { CanonicalWord, PhonemeError } from '../api';
-import { getArticulationGuide, getArticulationImage, normalizePhoneme } from '../lib/articulation';
-import { loadPhonemeImages } from '../lib/phonemeImages';
-
-// 관리자가 업로드한 백엔드 음소 이미지 URL. 없으면 null (정적 에셋으로 폴백).
-function usePhonemeImageUrl(phoneme: string): string | null {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    loadPhonemeImages().then((map) => {
-      if (active) setUrl(map.get(phoneme) ?? null);
-    });
-    return () => {
-      active = false;
-    };
-  }, [phoneme]);
-  return url;
-}
+import { normalizePhoneme, useArticulation } from '../lib/articulation';
 
 // PC(마우스/트랙패드, pointer: fine)면 true. 음소 표가 가로 스크롤됨을 PC 사용자가
 // 인지하도록 이 환경에선 scrollbar-hide 를 떼고 스크롤바를 노출한다. 터치는 그대로 숨김.
@@ -264,9 +248,8 @@ export default function FeedbackPhonemeSection({
 }
 
 function ArticulationCard({ phoneme, onClose }: { phoneme: string; onClose: () => void }) {
-  // 관리자가 올린 백엔드 이미지를 우선 쓰고, 없으면 번들된 정적 에셋으로 폴백한다.
-  const image = usePhonemeImageUrl(phoneme) ?? getArticulationImage(phoneme);
-  const guide = getArticulationGuide(phoneme);
+  // 음차·설명·이미지를 백엔드 인벤토리에서 한 번에 받아온다.
+  const { entry, loading } = useArticulation(phoneme);
   // 이미지 안 한국어 캡션이 모바일 카드 크기에선 너무 작아 잘 안 읽혀, 탭 시 풀스크린 모달로 확대한다.
   const [zoomed, setZoomed] = useState(false);
 
@@ -278,32 +261,34 @@ function ArticulationCard({ phoneme, onClose }: { phoneme: string; onClose: () =
           <X size={16} className="text-gray-500" />
         </button>
       </div>
-      {/* 사진은 있으면 보여주고, 없으면 큰 placeholder 대신 설명만 깔끔하게 노출한다. */}
-      {image && (
-        <button
-          type="button"
-          onClick={() => setZoomed(true)}
-          className="block w-full max-w-xs mx-auto mb-2 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-brand-500"
-          aria-label={`${phoneme} 조음 위치 크게 보기`}
-        >
-          <img src={image} alt={`${phoneme} 조음 위치`} className="w-full rounded-lg" />
-          <span className="block text-[10px] text-gray-400 mt-1">탭하면 크게 볼 수 있어요</span>
-        </button>
-      )}
-      {guide ? (
-        <div className="space-y-1">
-          <p className="text-sm">
-            <span className="font-semibold text-gray-900">한글 음차 </span>
-            <span className="text-brand-700 font-medium">{guide.koreanCue}</span>
-          </p>
-          <p className="text-xs text-gray-600 leading-relaxed">{guide.tip}</p>
-        </div>
+      {entry ? (
+        <>
+          {/* 이미지 — 탭하면 풀스크린으로 확대해 작은 캡션도 또렷이 보이게 한다. */}
+          <button
+            type="button"
+            onClick={() => setZoomed(true)}
+            className="block w-full max-w-xs mx-auto mb-2 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-brand-500"
+            aria-label={`${phoneme} 조음 위치 크게 보기`}
+          >
+            <img src={entry.imageUrl} alt={`${phoneme} 조음 위치`} className="w-full rounded-lg" />
+            <span className="block text-[10px] text-gray-400 mt-1">탭하면 크게 볼 수 있어요</span>
+          </button>
+          <div className="space-y-1">
+            <p className="text-sm">
+              <span className="font-semibold text-gray-900">한글 음차 </span>
+              <span className="text-brand-700 font-medium">{entry.koreanCue}</span>
+            </p>
+            <p className="text-xs text-gray-600 leading-relaxed">{entry.tip}</p>
+          </div>
+        </>
       ) : (
-        <p className="text-xs text-gray-400">이 음소의 발음 안내는 준비 중이에요.</p>
+        <p className="text-xs text-gray-400">
+          {loading ? '조음 안내를 불러오는 중이에요…' : '이 음소의 발음 안내는 준비 중이에요.'}
+        </p>
       )}
 
       {/* 풀스크린 확대 모달 — 배경 또는 X 클릭으로 닫는다. 이미지를 viewport 최대 폭/높이까지 키운다. */}
-      {zoomed && image && (
+      {zoomed && entry && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setZoomed(false)}
@@ -322,7 +307,7 @@ function ArticulationCard({ phoneme, onClose }: { phoneme: string; onClose: () =
             <X size={24} className="text-white" />
           </button>
           <img
-            src={image}
+            src={entry.imageUrl}
             alt={`${phoneme} 조음 위치 확대`}
             onClick={(e) => e.stopPropagation()}
             className="max-w-full max-h-full rounded-lg"

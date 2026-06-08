@@ -58,9 +58,12 @@ export type Prompt = {
   overridden: boolean;
 };
 
-// 음소 조음 이미지. imageUrl 은 이미지 바이트를 서빙하는 공개 경로(/api/phonemes/{p}/image).
-export type PhonemeAsset = {
+// 음소 조음 안내 한 건. 백엔드 인벤토리(SSOT)에서 내려온다.
+// koreanCue 는 짧은 한글 음차, tip 은 혀·입 모양 설명, imageUrl 은 이미지 바이트를 서빙하는 공개 경로.
+export type PhonemeArticulation = {
   phoneme: string;
+  koreanCue: string;
+  tip: string;
   imageUrl: string;
 };
 

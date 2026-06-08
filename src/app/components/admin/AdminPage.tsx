@@ -12,7 +12,6 @@ import ChallengeManager from './ChallengeManager';
 import ContentSection from './ContentSection';
 import LegalManager from './LegalManager';
 import PromptManager from './PromptManager';
-import PhonemeManager from './PhonemeManager';
 import SettingsManager from './SettingsManager';
 import SystemStatusSection from './SystemStatusSection';
 
@@ -20,7 +19,6 @@ type TabKey =
   | 'content'
   | 'llm'
   | 'prompt'
-  | 'phoneme'
   | 'settings'
   | 'badge'
   | 'challenge'
@@ -31,7 +29,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'content', label: '콘텐츠' },
   { key: 'llm', label: '모델' },
   { key: 'prompt', label: '프롬프트' },
-  { key: 'phoneme', label: '음소' },
   { key: 'settings', label: '설정' },
   { key: 'badge', label: '배지' },
   { key: 'challenge', label: '챌린지' },
@@ -84,7 +81,6 @@ export default function AdminPage() {
             </>
           )}
           {tab === 'prompt' && <PromptManager />}
-          {tab === 'phoneme' && <PhonemeManager />}
           {tab === 'settings' && <SettingsManager />}
           {tab === 'badge' && <BadgeManager />}
           {tab === 'challenge' && <ChallengeManager />}

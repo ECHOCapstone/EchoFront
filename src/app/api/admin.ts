@@ -8,7 +8,6 @@ import type {
   LegalTermsEntry,
   LlmConfig,
   ModelServerConfig,
-  PhonemeAsset,
   Prompt,
   ScriptDetail,
   ScriptSummary,
@@ -82,18 +81,6 @@ export const adminApi = {
   // classpath 기본값으로 초기화. 응답은 복원된 프롬프트.
   resetPrompt: (key: string) =>
     apiClient.delete<Prompt>(`/api/admin/prompts/${encodeURIComponent(key)}`),
-
-  listPhonemeAssets: () => apiClient.get<PhonemeAsset[]>('/api/admin/phonemes'),
-  uploadPhonemeImage: (phoneme: string, file: File) => {
-    const form = new FormData();
-    form.append('image', file);
-    return apiClient.post<PhonemeAsset>(
-      `/api/admin/phonemes/${encodeURIComponent(phoneme)}/image`,
-      { formData: form }
-    );
-  },
-  deletePhonemeImage: (phoneme: string) =>
-    apiClient.delete<void>(`/api/admin/phonemes/${encodeURIComponent(phoneme)}`),
 
   listSettings: () => apiClient.get<Setting[]>('/api/admin/settings'),
   // 값 재정의 (override).
