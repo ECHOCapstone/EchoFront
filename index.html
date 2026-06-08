@@ -9,7 +9,7 @@
     <!-- 최소 CSP. script 는 self 만 허용하여 외부 스크립트 인젝션을 차단한다.
          connect-src 는 운영 API + 로컬 dev 백엔드 (http://localhost:* / ws://localhost:*) 까지 열어 둔다.
          img-src 의 data:/https: 는 인라인 SVG 와 백엔드가 서빙하는 음소/배지 이미지 호환을 위한 것이다. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; connect-src 'self' https: http://localhost:* ws://localhost:*; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; media-src 'self' blob:; connect-src 'self' https: http://localhost:* ws://localhost:*; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; script-src 'self' https://static.cloudflareinsights.com">
     <title>ECHO</title>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
