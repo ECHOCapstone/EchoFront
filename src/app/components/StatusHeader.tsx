@@ -22,7 +22,7 @@ export default function StatusHeader({ streak, exp }: StatusHeaderProps) {
   const goStats = () => navigate(paths.stats);
 
   return (
-    <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+    <div data-tour="status" className="flex items-center gap-1.5 mb-4 flex-wrap">
       {/* 레벨 배지 — 맨 왼쪽 끝에 고정(mr-auto 로 이후 항목을 오른쪽으로 민다) */}
       <button
         onClick={goStats}

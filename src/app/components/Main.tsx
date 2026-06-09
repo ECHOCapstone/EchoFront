@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
+import OnboardingTour from '../onboarding/OnboardingTour';
+import { useHomeTour } from '../onboarding/useOnboarding';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import booMain from '@/assets/boo-pic/BOO20-1.png';
@@ -10,9 +12,11 @@ export default function Main() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const nickname = user?.nickname ?? '사용자';
+  const homeTour = useHomeTour();
 
   return (
     <div className="min-h-screen bg-white max-w-md mx-auto md:shadow-xl flex flex-col">
+      <OnboardingTour {...homeTour} />
       <div className="flex-1 p-6 pb-24">
         <StatusHeader />
 
@@ -25,6 +29,7 @@ export default function Main() {
         <div className="space-y-4">
           <div className="relative">
             <button
+              data-tour="tracks"
               onClick={() => navigate(paths.tracks)}
               className="w-full h-36 bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white shadow-lg rounded-3xl flex items-center gap-5 px-6 transition-colors text-left"
             >
@@ -43,6 +48,7 @@ export default function Main() {
 
           <div className="relative">
             <button
+              data-tour="custom"
               onClick={() => navigate(paths.customLearning)}
               className="w-full h-36 bg-[#5BC0EB] hover:bg-[#49AED9] active:bg-[#379CC7] text-white shadow-lg rounded-3xl flex items-center gap-5 px-6 transition-colors text-left"
             >

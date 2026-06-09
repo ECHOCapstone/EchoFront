@@ -75,6 +75,8 @@ export const authApi = {
   me: () => apiClient.get<User>('/api/members/me'),
   changeNickname: (nickname: string) =>
     apiClient.patch<User>('/api/members/me/nickname', { json: { nickname } }),
+  // 온보딩 튜토리얼 완료를 영속한다. 본문은 없으며, 멱등이라 재호출해도 안전하다. 갱신된 사용자를 반환한다.
+  completeOnboarding: () => apiClient.patch<User>('/api/members/me/onboarding-completed'),
   // 로그인된 사용자가 자신의 비밀번호를 교체한다 — 현재 비밀번호 확인 + 정책 검증 필요.
   changePassword: (currentPassword: string, newPassword: string) =>
     apiClient.patch<void>('/api/members/me/password', {

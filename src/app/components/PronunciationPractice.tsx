@@ -24,6 +24,8 @@ import {
 } from './ui/alert-dialog';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
+import OnboardingTour from '../onboarding/OnboardingTour';
+import { usePracticeTour } from '../onboarding/useOnboarding';
 import { BotBubble } from './ChatBubble';
 import FeedbackFlow from './FeedbackFlow';
 import LearningChatFlow, { type LearningPrompt } from './learning/LearningChatFlow';
@@ -76,6 +78,7 @@ export default function PronunciationPractice() {
   const navigate = useNavigate();
   const confirm = useConfirm();
   const [searchParams] = useSearchParams();
+  const practiceTour = usePracticeTour();
 
   const scriptId = useMemo(() => readPositiveInt(searchParams.get('scriptId')), [searchParams]);
   const trackContext = useMemo<TrackContext | null>(() => {
@@ -256,6 +259,7 @@ export default function PronunciationPractice() {
 
   return (
     <div className="min-h-screen bg-gray-50 max-w-md mx-auto md:shadow-xl flex flex-col">
+      <OnboardingTour {...practiceTour} />
       <div className="flex-1 p-6 pb-24">
         <StatusHeader />
 

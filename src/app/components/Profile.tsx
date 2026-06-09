@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, FileText, Lock, LogOut, Pencil, ShieldCheck, UserX } from 'lucide-react';
+import { Bell, FileText, HelpCircle, Lock, LogOut, Pencil, ShieldCheck, UserX } from 'lucide-react';
 import booProfile from '@/assets/boo-pic/BOO23.png';
 import StatusHeader from './StatusHeader';
 import BottomNav from './layout/BottomNav';
@@ -10,6 +10,7 @@ import ChangePasswordDialog from './auth/ChangePasswordDialog';
 import WithdrawDialog from './auth/WithdrawDialog';
 import TermsModal from './auth/TermsModal';
 import { authApi, legalApi, type TermsResponse } from '../api/auth';
+import { requestTutorialReplay } from '../onboarding/useOnboarding';
 import { useAuth } from '../auth/useAuth';
 import { paths } from '../lib/paths';
 import { notifyApiError, notifyInfo } from '../lib/notify';
@@ -83,6 +84,12 @@ export default function Profile() {
     } finally {
       setUpdatingNickname(false);
     }
+  };
+
+  // 온보딩 튜토리얼을 다시 본다. 완료 상태는 그대로 두고 홈에서 1회만 재생한다.
+  const handleReplayTutorial = () => {
+    requestTutorialReplay();
+    navigate(paths.main);
   };
 
   const handleDeleteAccount = () => setWithdrawDialogOpen(true);
@@ -188,6 +195,19 @@ export default function Profile() {
             <span className="text-xs font-bold text-gray-500 bg-gray-200 rounded-full px-2 py-0.5">
               준비 중
             </span>
+          </button>
+
+          <button
+            onClick={handleReplayTutorial}
+            className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-brand-100 rounded-full p-2">
+                <HelpCircle size={20} className="text-brand-500" />
+              </div>
+              <span className="font-medium text-gray-900">튜토리얼 다시 보기</span>
+            </div>
+            <span className="text-gray-400">›</span>
           </button>
 
           <div className="space-y-2">

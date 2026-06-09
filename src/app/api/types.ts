@@ -24,6 +24,8 @@ export type User = {
   // "비밀번호 변경"을 비활성화하는 데 사용한다.
   hasPassword: boolean;
   createdAt: string;
+  // 온보딩 튜토리얼 완료 여부. false 면 최초 진입 시 1회 튜토리얼을 자동으로 띄운다.
+  onboardingCompleted: boolean;
 };
 
 // 어드민의 피드백 LLM 설정. provider/model 은 현재 적용값, *Options 는 선택 후보.

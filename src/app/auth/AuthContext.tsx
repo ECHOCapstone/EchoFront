@@ -29,6 +29,8 @@ export type AuthContextValue = {
   acceptOAuthToken: (accessToken: string) => Promise<User>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  // 서버가 갱신해 돌려준 사용자로 전역 상태를 교체한다. 인증 상태일 때만 적용된다 (백엔드가 SSOT).
+  setUser: (user: User) => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -107,6 +109,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'unauthenticated' });
   }, []);
 
+  const setUser = useCallback<AuthContextValue['setUser']>((user) => {
+    setState((prev) =>
+      prev.status === 'authenticated' ? { status: 'authenticated', user } : prev
+    );
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       state,
@@ -117,8 +125,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       acceptOAuthToken,
       logout,
       refresh,
+      setUser,
     }),
-    [state, login, signup, acceptOAuthToken, logout, refresh]
+    [state, login, signup, acceptOAuthToken, logout, refresh, setUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -37,6 +37,7 @@ export default function BottomNav({ active, variant = 'main' }: BottomNavProps) 
     // 모바일은 max-w-md 가 뷰포트보다 커서 w-full 그대로 화면 폭을 차지한다.
     // pb-[env(...)] : iOS 노치/홈 인디케이터 영역만큼 하단 패딩을 자동으로 확보해 탭 라벨이 가려지지 않게 한다.
     <nav
+      data-tour="nav"
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 shadow-lg"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
