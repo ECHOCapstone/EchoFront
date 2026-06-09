@@ -194,10 +194,17 @@ export default function PronunciationPractice() {
 
   // 트랙 모드에서 다음 챕터/완주 처리. 단일 모드일 때는 undefined 를 반환하여
   // FeedbackFlow 기본 동작(=랭킹 이동) 이 그대로 적용된다.
-  const trackProgress = trackContext && track
-    ? { current: trackContext.chapterIndex + 1, total: track.chapters.length }
+  // URL 의 trackId 가 막 바뀐 직후엔 이전 trackId 의 track 응답이 잠깐 남아, chapterIndex(새 값)와
+  // chapters.length(옛 값) 가 섞여 "챕터 4/2" 같은 불일치가 보일 수 있다. 응답의 track.id 가 URL 의
+  // trackId 와 일치할 때만 진행도/완주 판정을 신뢰한다 (불일치 = stale → 진행도 숨김).
+  const trackMatches = !!(trackContext && track && track.id === trackContext.trackId);
+  const trackProgress = trackMatches && trackContext && track
+    ? {
+        current: Math.min(trackContext.chapterIndex + 1, track.chapters.length),
+        total: track.chapters.length,
+      }
     : null;
-  const isLastChapter = trackContext && track
+  const isLastChapter = trackMatches && trackContext && track
     ? trackContext.chapterIndex >= track.chapters.length - 1
     : false;
 
@@ -206,7 +213,9 @@ export default function PronunciationPractice() {
         // 방금 끝낸 챕터를 완료 처리(지도의 잠금 해제·체크 표시 근거).
         // 챕터 confetti 는 FeedbackFlow 의 EXP 팝업이 뜰 때 이미 터졌으므로 여기선 진행 처리만.
         markChapterComplete(trackContext.trackId, trackContext.chapterIndex);
-        if (!track) {
+        // track 응답이 아직 없거나 다른 trackId 의 stale 응답이면 챕터 인덱싱을 신뢰할 수 없으니
+        // 트랙 개요로 안전하게 보낸다 (잘못된 다음 챕터로 튀는 것 방지).
+        if (!track || !trackMatches) {
           navigate(paths.trackOverview(trackContext.trackId));
           return;
         }
