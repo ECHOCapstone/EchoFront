@@ -17,9 +17,10 @@ const GRID_KEYWORDS = ['장소', '상황'];
 const SHELF_KEYWORDS = ['모음', '자음'];
 
 // 숲 지도 테마를 적용할 트랙 제목 키워드.
-//   "기본발음트랙"   → '발음' 매칭
-//   "일상회화표현"   → '회화' / '표현' 매칭
-const FOREST_KEYWORDS = ['발음', '회화', '표현'];
+//   "기본발음트랙"     → '발음' 매칭
+//   "일상회화표현"     → '회화' / '표현' 매칭
+//   "토익 LC 쉐도잉"   → '쉐도잉' 매칭 (순차 잠금 해제 경로형)
+const FOREST_KEYWORDS = ['발음', '회화', '표현', '쉐도잉'];
 
 export function resolveTrackTheme(track: { id: number; title: string }): TrackTheme {
   const title = (track.title ?? '').replace(/\s+/g, '');
